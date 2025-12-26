@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import Card from '../components/Card'
 import { Button, GoldBadge, ProgressBar } from '../components/ui'
 import { listMissions, listUserMissions } from '../lib/missionsApi'
+import { formatRelativeDate } from '../lib/postsApi'
 
 function ActiveTaskCard({ task, onContinue }) {
   return (
@@ -20,6 +21,12 @@ function ActiveTaskCard({ task, onContinue }) {
             <span className="text-xs font-semibold">Altın</span>
           </GoldBadge>
         </div>
+
+        {task.description && (
+          <div className="mt-4">
+            <div className="text-sm leading-relaxed text-white/65 line-clamp-2">{task.description}</div>
+          </div>
+        )}
 
         <div className="mt-5">
           <div className="flex items-center justify-between text-sm">
@@ -56,10 +63,12 @@ function RecommendedTaskCard({ task, onInspect }) {
             </div>
             <div className="min-w-0">
               <div className="truncate text-lg font-semibold tracking-tight text-white">{task.title}</div>
-              <div className="mt-2 flex items-center gap-2 text-sm text-white/55">
-                <Clock size={16} />
-                <span>{task.duration ?? ''}</span>
-              </div>
+              {task.created_at && (
+                <div className="mt-2 flex items-center gap-2 text-sm text-white/55">
+                  <Clock size={16} />
+                  <span>{formatRelativeDate(task.created_at)}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -68,6 +77,12 @@ function RecommendedTaskCard({ task, onInspect }) {
             <span className="text-xs font-semibold">altın</span>
           </GoldBadge>
         </div>
+
+        {task.description && (
+          <div className="mt-4">
+            <div className="text-sm leading-relaxed text-white/65 line-clamp-2">{task.description}</div>
+          </div>
+        )}
 
         <div className="mt-4">
           <Button
@@ -128,9 +143,10 @@ export default function Tasks() {
     return {
       id: m.id,
       title: m.title,
+      description: m.description,
       reward: m.coin,
       progress: 50,
-      duration: '',
+      created_at: m.created_at,
       image_url: m.image_url,
     }
   }, [activeUserMission])
@@ -146,8 +162,9 @@ export default function Tasks() {
       .map((m) => ({
         id: m.id,
         title: m.title,
+        description: m.description,
         reward: m.coin,
-        duration: '',
+        created_at: m.created_at,
         image_url: m.image_url,
       }))
   }, [missions, takenMissionIds])
@@ -166,7 +183,7 @@ export default function Tasks() {
       ) : null}
 
       <div className="flex items-center justify-between">
-        <div className="text-lg font-semibold text-white">Önerilenler</div>
+        <div className="text-lg font-semibold text-white">Görevler</div>
         <div className="flex items-center gap-2">
           <button
             type="button"

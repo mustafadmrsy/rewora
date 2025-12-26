@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { CheckCircle, Flag, Heart, MessageCircle, MoreVertical, Send, UserX } from 'lucide-react'
 import Card from '../../../components/Card'
-import { addReview, listReviews, resolvePostImageUrl } from '../../../lib/postsApi'
+import { addReview, listReviews, resolvePostImageUrl, formatRelativeDate } from '../../../lib/postsApi'
 
 function CommentAvatar({ url }) {
   const [error, setError] = useState(false)
@@ -74,7 +74,7 @@ export default function FeedCard({ post, liked, likes, onLike, onOpen }) {
           id: r?.id ?? r?.review_id ?? Date.now(),
           user: r?.user?.username ? `@${r.user.username}` : r?.user?.fname ? `@${r.user.fname}` : '@kullanici',
           text: r?.review ?? r?.content ?? r?.text ?? '',
-          time: r?.created_at ? new Date(r.created_at).toLocaleString('tr-TR') : '',
+          time: r?.created_at ? formatRelativeDate(r.created_at) : '',
           user_photo_url: resolvePostImageUrl(r?.user?.photo ?? null),
         }))
         setCommentItems(mapped)

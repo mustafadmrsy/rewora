@@ -3,7 +3,7 @@ import { ArrowLeft, CheckCircle, Flag, Heart, MessageCircle, Send, MoreVertical,
 import { useNavigate, useParams } from 'react-router-dom'
 import Card from '../components/Card'
 import { Button, cn, GoldBadge, IconButton } from '../components/ui'
-import { addReview, getPost, listReviews, reportPost, resolvePostImageUrl, toggleLike } from '../lib/postsApi'
+import { addReview, formatRelativeDate, getPost, listReviews, reportPost, resolvePostImageUrl, toggleLike } from '../lib/postsApi'
 
 export default function PostDetail() {
   const navigate = useNavigate()
@@ -84,7 +84,7 @@ export default function PostDetail() {
           id: r?.id ?? r?.review_id ?? Date.now(),
           user: r?.user?.username ? `@${r.user.username}` : r?.user?.fname ? `@${r.user.fname}` : '@kullanici',
           text: r?.review ?? r?.content ?? r?.text ?? '',
-          time: r?.created_at ? new Date(r.created_at).toLocaleString('tr-TR') : '',
+          time: r?.created_at ? formatRelativeDate(r.created_at) : '',
           user_photo_url: resolvePostImageUrl(r?.user?.photo ?? null),
         }))
         setComments(mapped)

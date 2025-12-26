@@ -11,18 +11,42 @@ function toArray(maybeArray) {
   return []
 }
 
-function formatRelativeDate(dateInput) {
+export function formatRelativeDate(dateInput) {
   if (!dateInput) return ''
-  const d = new Date(dateInput)
+  
+  // Handle ISO 8601 format and other date strings
+  let d
+  if (typeof dateInput === 'string') {
+    // Replace space with 'T' for ISO format if needed
+    const normalized = dateInput.includes('T') ? dateInput : dateInput.replace(' ', 'T')
+    d = new Date(normalized)
+  } else {
+    d = new Date(dateInput)
+  }
+  
+  if (Number.isNaN(d.getTime())) {
+    // Try parsing as timestamp
+    const timestamp = typeof dateInput === 'string' ? Date.parse(dateInput) : dateInput
+    if (!Number.isNaN(timestamp)) {
+      d = new Date(timestamp)
+    } else {
+      return ''
+    }
+  }
+  
   if (Number.isNaN(d.getTime())) return ''
+  
   const diffMs = Date.now() - d.getTime()
+  if (diffMs < 0) return 'şimdi' // Future date
+  
   const sec = Math.floor(diffMs / 1000)
   const min = Math.floor(sec / 60)
   const hr = Math.floor(min / 60)
   const day = Math.floor(hr / 24)
+  
   if (sec < 60) return `${sec}s`
   if (min < 60) return `${min}dk`
-  if (hr < 24) return `${hr}s`
+  if (hr < 24) return `${hr}sa`
   return `${day}g`
 }
 

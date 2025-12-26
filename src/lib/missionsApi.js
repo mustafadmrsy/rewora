@@ -55,34 +55,46 @@ export function mapUserMission(raw) {
 
 export async function listMissions() {
   const res = await api.get('/mission')
-  const data = res?.data ?? {}
-  const payload = data.missions
+  // Response format: { success: 200, message: "...", data: { missions: { data: [...], ...pagination }, categories: [...], user: {...} } }
+  const responseData = res?.data ?? {}
+  const missionsPayload = responseData.missions
 
+  // Handle paginated response: missions can be { data: [...], current_page, ... } or direct array
   const list =
-    Array.isArray(payload)
-      ? payload
-      : Array.isArray(payload?.data)
-        ? payload.data
-        : toArray(payload)
+    Array.isArray(missionsPayload)
+      ? missionsPayload
+      : Array.isArray(missionsPayload?.data)
+        ? missionsPayload.data
+        : toArray(missionsPayload)
 
   const missions = list.map(mapMission).filter(Boolean)
-  return { missions, categories: data.categories ?? [], user: data.user ?? null, meta: payload ?? null }
+  return { 
+    missions, 
+    categories: responseData.categories ?? [], 
+    user: responseData.user ?? null, 
+    meta: missionsPayload ?? null 
+  }
 }
 
 export async function listUserMissions() {
   const res = await api.get('/mission/user')
-  const data = res?.data ?? {}
-  const payload = data.user_missions
+  // Response format: { success: 200, message: "...", data: { user_missions: { data: [...], ...pagination } } }
+  const responseData = res?.data ?? {}
+  const userMissionsPayload = responseData.user_missions
 
+  // Handle paginated response: user_missions can be { data: [...], current_page, ... } or direct array
   const list =
-    Array.isArray(payload)
-      ? payload
-      : Array.isArray(payload?.data)
-        ? payload.data
-        : toArray(payload)
+    Array.isArray(userMissionsPayload)
+      ? userMissionsPayload
+      : Array.isArray(userMissionsPayload?.data)
+        ? userMissionsPayload.data
+        : toArray(userMissionsPayload)
 
   const userMissions = list.map(mapUserMission).filter(Boolean)
-  return { userMissions, meta: payload ?? null }
+  return { 
+    userMissions, 
+    meta: userMissionsPayload ?? null 
+  }
 }
 
 export async function startMission(missionId) {

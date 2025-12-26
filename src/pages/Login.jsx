@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui'
@@ -11,7 +11,160 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const handleGoogleCallback = useCallback(async (response) => {
+    if (!response || !response.credential) {
+      setError('Google girişi başarısız.')
+      setGoogleLoading(false)
+      return
+    }
+
+    try {
+      setGoogleLoading(true)
+      setError('')
+
+      // Decode JWT to get user info
+      const payload = JSON.parse(atob(response.credential.split('.')[1]))
+      const name = payload.name || ''
+      const fname = payload.given_name || null
+      const lname = payload.family_name || null
+
+      const deviceToken = getOrCreateDeviceToken()
+
+      // Send to backend - API requires: access_token (JWT credential), name, token, type (web)
+      const res = await api.post('/auth/googlelogin', {
+        access_token: response.credential, // Google JWT credential
+        name: name,
+        fname: fname,
+        lname: lname,
+        token: deviceToken,
+        type: 'web', // Use 'web' for web application as per API docs
+      })
+
+      const accessToken = res?.data?.access_token
+      const tokenType = res?.data?.token_type
+      const user = res?.data?.user
+
+      if (!accessToken) {
+        setError('Giriş başarısız. Lütfen tekrar deneyin.')
+        setGoogleLoading(false)
+        return
+      }
+
+      setSession({ accessToken, tokenType, user })
+      navigate('/', { replace: true })
+    } catch (err) {
+      console.error('Google login error:', err)
+      const msg = err?.data?.message
+      setError(typeof msg === 'string' && msg.length ? msg : 'Google girişi başarısız.')
+      setGoogleLoading(false)
+    }
+  }, [navigate])
+
+  useEffect(() => {
+    // Initialize Google Sign-In when component mounts
+    if (typeof window.google !== 'undefined' && window.google.accounts) {
+      window.google.accounts.id.initialize({
+        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
+        callback: handleGoogleCallback,
+      })
+    }
+  }, [handleGoogleCallback])
+
+  async function handleGoogleLogin() {
+    if (googleLoading || loading) return
+    setError('')
+
+    try {
+      setGoogleLoading(true)
+
+      // Check if Google Identity Services is loaded
+      if (typeof window.google === 'undefined' || !window.google.accounts) {
+        setError('Google servisleri yüklenemedi. Lütfen sayfayı yenileyin.')
+        setGoogleLoading(false)
+        return
+      }
+
+      // Use Google Identity Services One Tap or prompt
+      window.google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          // Fallback: Use OAuth 2.0 popup
+          const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
+          
+          if (!clientId) {
+            setError('Google Client ID yapılandırılmamış. Lütfen yöneticiye başvurun.')
+            setGoogleLoading(false)
+            return
+          }
+
+          const tokenClient = window.google.accounts.oauth2.initTokenClient({
+            client_id: clientId,
+            scope: 'email profile',
+            callback: async (tokenResponse) => {
+              try {
+                if (!tokenResponse || !tokenResponse.access_token) {
+                  setError('Google girişi başarısız.')
+                  setGoogleLoading(false)
+                  return
+                }
+
+                // Get user info from Google
+                const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+                  headers: {
+                    Authorization: `Bearer ${tokenResponse.access_token}`,
+                  },
+                })
+
+                if (!userInfoRes.ok) {
+                  setError('Kullanıcı bilgileri alınamadı.')
+                  setGoogleLoading(false)
+                  return
+                }
+
+                const userInfo = await userInfoRes.json()
+                const deviceToken = getOrCreateDeviceToken()
+
+                // Send to backend
+                const res = await api.post('/auth/googlelogin', {
+                  access_token: tokenResponse.access_token,
+                  name: userInfo.name || '',
+                  fname: userInfo.given_name || null,
+                  lname: userInfo.family_name || null,
+                  token: deviceToken,
+                  type: 'web',
+                })
+
+                const accessToken = res?.data?.access_token
+                const tokenType = res?.data?.token_type
+                const user = res?.data?.user
+
+                if (!accessToken) {
+                  setError('Giriş başarısız. Lütfen tekrar deneyin.')
+                  setGoogleLoading(false)
+                  return
+                }
+
+                setSession({ accessToken, tokenType, user })
+                navigate('/', { replace: true })
+              } catch (err) {
+                const msg = err?.data?.message
+                setError(typeof msg === 'string' && msg.length ? msg : 'Google girişi başarısız.')
+                setGoogleLoading(false)
+              }
+            },
+          })
+
+          tokenClient.requestAccessToken({ prompt: 'consent' })
+        }
+      })
+    } catch (err) {
+      console.error('Google login error:', err)
+      setError('Google girişi başarısız. Lütfen tekrar deneyin.')
+      setGoogleLoading(false)
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -68,8 +221,9 @@ export default function Login() {
         <div className="mt-8 space-y-4">
           <button
             type="button"
-            className="flex h-12 w-full items-center justify-center gap-3 rounded-full border border-white/12 bg-white/8 text-sm font-semibold text-white/90 transition hover:bg-white/10"
-            onClick={() => navigate('/')}
+            className="flex h-12 w-full items-center justify-center gap-3 rounded-full border border-white/12 bg-white/8 text-sm font-semibold text-white/90 transition hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleGoogleLogin}
+            disabled={googleLoading || loading}
           >
             <svg
               className="h-[18px] w-[18px]"
@@ -94,7 +248,7 @@ export default function Login() {
               />
               <path fill="none" d="M0 0h48v48H0z" />
             </svg>
-            Google ile devam et
+            {googleLoading ? 'Giriş yapılıyor...' : 'Google ile devam et'}
           </button>
 
           <button

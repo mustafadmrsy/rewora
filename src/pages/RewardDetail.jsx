@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, MapPin, Ticket, Image as ImageIcon } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button, GoldBadge } from '../components/ui'
@@ -12,8 +12,19 @@ export default function RewardDetail() {
   const [user, setUser] = useState(null)
   const [redeeming, setRedeeming] = useState(false)
   const [error, setError] = useState('')
+  const [showMenu, setShowMenu] = useState(false)
+  const menuRef = useRef(null)
 
   const userGold = useMemo(() => Number(user?.coin ?? 0), [user])
+
+  // Scroll to menu when it opens
+  useEffect(() => {
+    if (showMenu && menuRef.current) {
+      setTimeout(() => {
+        menuRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 100)
+    }
+  }, [showMenu])
 
   useEffect(() => {
     let cancelled = false
@@ -79,41 +90,71 @@ export default function RewardDetail() {
             <ArrowLeft size={22} />
           </button>
           <div className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--gold)] px-3 py-1 text-xs font-semibold text-black">
-            <span>{userGold} altın</span>
+            <span>{reward?.coin ?? 0} coin</span>
           </div>
         </div>
       </div>
 
       <div className="mx-auto max-w-[960px] px-3 sm:px-4 pt-2.5 pb-9 space-y-2.5">
-        <h1 className="text-center text-base font-semibold text-white">{reward?.title ?? ''}</h1>
-
         <div className="space-y-4">
           {/* Görsel alanı */}
-          <div className="relative overflow-hidden rounded-2xl bg-white/6 border border-white/8">
-            {reward?.image_url ? (
-              <img src={reward.image_url} alt="" className="aspect-[3/2] w-full object-cover" loading="lazy" />
+          <div className="relative flex items-center justify-center overflow-hidden rounded-2xl bg-white/6 border border-white/8 aspect-[3/2]">
+            {/* Background Image */}
+            {reward?.company_image_url ? (
+              <img 
+                src={reward.company_image_url} 
+                alt="" 
+                className="absolute inset-0 h-full w-full object-cover" 
+                loading="lazy" 
+              />
+            ) : reward?.image_url ? (
+              <img 
+                src={reward.image_url} 
+                alt="" 
+                className="absolute inset-0 h-full w-full object-cover" 
+                loading="lazy" 
+              />
             ) : (
-              <div className="aspect-[3/2] w-full flex items-center justify-center bg-gradient-to-br from-white/10 via-white/4 to-white/10">
-                <div className="flex h-12 w-12 md:h-10 md:w-10 lg:h-9 lg:w-9 items-center justify-center rounded-full bg-black/40 border border-white/15 text-white/70">
-                  <ImageIcon size={16} />
-                </div>
+              <div className="absolute inset-0 h-full w-full bg-gradient-to-br from-white/10 via-white/4 to-white/10" />
+            )}
+            
+            {/* Center Logo Circle */}
+            {reward?.logo_url && (
+              <div className="relative z-10 flex items-center justify-center">
+                <img 
+                  src={reward.logo_url} 
+                  alt="" 
+                  className="h-20 w-20 rounded-full object-cover border-2 border-white/20 bg-white/10 backdrop-blur-sm" 
+                  loading="lazy" 
+                />
               </div>
             )}
+
             <button
               type="button"
-              className="absolute left-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/75 text-[color:var(--gold)] backdrop-blur border border-white/10"
+              className="absolute left-3 top-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/75 text-[color:var(--gold)] backdrop-blur border border-white/10"
             >
               <Ticket size={16} />
             </button>
             <button
               type="button"
-              className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/75 text-[color:var(--gold)] backdrop-blur border border-white/10"
+              onClick={() => {
+                const company = reward?.company
+                if (company?.latitude && company?.longitude) {
+                  const mapsUrl = `https://www.google.com/maps?q=${company.latitude},${company.longitude}`
+                  window.open(mapsUrl, '_blank', 'noopener,noreferrer')
+                } else if (company?.address) {
+                  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(company.address)}`
+                  window.open(mapsUrl, '_blank', 'noopener,noreferrer')
+                }
+              }}
+              className="absolute right-3 top-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/75 text-[color:var(--gold)] backdrop-blur border border-white/10 hover:bg-black/85 transition"
             >
               <MapPin size={16} />
             </button>
-            <GoldBadge className="absolute bottom-3 right-3 px-3 py-1 text-xs font-semibold shadow-[0_0_0_4px_rgba(214,255,0,0.12)] transition hover:shadow-[0_0_0_6px_rgba(214,255,0,0.16)]">
-              <span className="text-xs font-semibold">{reward?.price ?? 0}</span>
-              <span className="text-xs font-semibold">altın</span>
+            <GoldBadge className="absolute bottom-3 right-3 z-10 px-3 py-1 text-xs font-semibold shadow-[0_0_0_4px_rgba(214,255,0,0.12)] transition hover:shadow-[0_0_0_6px_rgba(214,255,0,0.16)]">
+              <span className="text-xs font-semibold">{reward?.coin ?? 0}</span>
+              <span className="text-xs font-semibold">gold</span>
             </GoldBadge>
           </div>
 
@@ -126,8 +167,8 @@ export default function RewardDetail() {
 
             <div className="flex items-center justify-center">
               <GoldBadge className="px-3 py-1 text-sm font-semibold">
-                <span className="text-xs font-semibold">{reward?.price ?? 0}</span>
-                <span className="text-xs font-semibold">altın</span>
+                <span className="text-xs font-semibold">{reward?.coin ?? 0}</span>
+                <span className="text-xs font-semibold">gold</span>
               </GoldBadge>
             </div>
           </div>
@@ -160,9 +201,71 @@ export default function RewardDetail() {
             >
               {redeeming ? 'İşleniyor...' : 'Kuponu kullan'}
             </button>
-            <button className="w-full h-11 rounded-full bg-[color:var(--gold)] text-black text-[13px] font-semibold transition hover:bg-[color:var(--gold-2)]">
-              Menüyü Görüntüle
-            </button>
+            <div className="space-y-2.5">
+              <button 
+                type="button"
+                onClick={() => setShowMenu(!showMenu)}
+                className="w-full h-11 rounded-full bg-[color:var(--gold)] text-black text-[13px] font-semibold transition hover:bg-[color:var(--gold-2)]"
+              >
+                {showMenu ? 'Menüyü Gizle' : 'Menüyü Görüntüle'}
+              </button>
+
+              {/* Menü - Butonun hemen altında */}
+              {showMenu && reward?.qr_categories && reward.qr_categories.length > 0 && (
+                <div ref={menuRef} id="menu-section" className="space-y-4 rounded-2xl border border-white/10 bg-white/6 p-4">
+                  <div className="text-lg font-semibold text-white">Menü</div>
+                  {reward.qr_categories.map((category) => (
+                    <div key={category.id} className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        {category.photo && (
+                          <img 
+                            src={category.photo} 
+                            alt={category.name} 
+                            className="h-12 w-12 rounded-lg object-cover border border-white/10"
+                            loading="lazy"
+                          />
+                        )}
+                        <div className="text-base font-semibold text-white">{category.name}</div>
+                      </div>
+                      
+                      {category.products && category.products.length > 0 && (
+                        <div className="space-y-2 pl-0 sm:pl-14">
+                          {category.products.map((product) => (
+                            <div 
+                              key={product.id} 
+                              className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/6 p-3"
+                            >
+                              {product.photo && (
+                                <img 
+                                  src={product.photo} 
+                                  alt={product.name} 
+                                  className="h-16 w-16 rounded-lg object-cover border border-white/10 shrink-0"
+                                  loading="lazy"
+                                />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-semibold text-white">{product.name}</div>
+                                {product.description && (
+                                  <div className="mt-1 text-xs text-white/65">{product.description}</div>
+                                )}
+                                <div className="mt-2 text-sm font-semibold text-[color:var(--gold)]">
+                                  {product.price} ₺
+                                  {product.old_price && (
+                                    <span className="ml-2 text-xs text-white/50 line-through">
+                                      {product.old_price} ₺
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -4610,7 +4610,8 @@
                         "type": "string",
                         "enum": [
                             "ios",
-                            "android"
+                            "android",
+                            "web"
                         ]
                     },
                     "platform": {
@@ -4667,7 +4668,8 @@
                         "type": "string",
                         "enum": [
                             "ios",
-                            "android"
+                            "android",
+                            "web"
                         ]
                     },
                     "platform": {
@@ -4733,7 +4735,8 @@
                         "type": "string",
                         "enum": [
                             "ios",
-                            "android"
+                            "android",
+                            "web"
                         ]
                     },
                     "platform": {
@@ -4800,7 +4803,8 @@
                         "type": "string",
                         "enum": [
                             "ios",
-                            "android"
+                            "android",
+                            "web"
                         ]
                     },
                     "platform": {

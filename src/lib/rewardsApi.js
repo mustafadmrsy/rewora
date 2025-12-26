@@ -29,12 +29,15 @@ export function mapOffer(raw) {
   const title = raw.title ?? raw.name ?? raw.offer_title ?? ''
   const vendor = raw.company?.title ?? raw.company?.name ?? raw.vendor ?? raw.brand ?? ''
 
+  // Discount: rate field is used in API response
   const discount =
     typeof raw.discount === 'number'
       ? raw.discount
-      : typeof raw.discount_rate === 'number'
-        ? raw.discount_rate
-        : Number(raw.discount ?? raw.discount_rate ?? 0)
+      : typeof raw.rate === 'number'
+        ? raw.rate
+        : typeof raw.discount_rate === 'number'
+          ? raw.discount_rate
+          : Number(raw.discount ?? raw.rate ?? raw.discount_rate ?? 0)
 
   const price =
     typeof raw.coin === 'number'
@@ -45,7 +48,25 @@ export function mapOffer(raw) {
           ? raw.cost
           : Number(raw.coin ?? raw.price ?? raw.cost ?? 0)
 
-  const image = raw.image ?? raw.photo ?? raw.cover ?? raw.banner ?? null
+  const coin = typeof raw.coin === 'number' ? raw.coin : Number(raw.coin ?? 0)
+
+  // Image: check offer image first, then company image/logo
+  const image =
+    raw.image ??
+    raw.photo ??
+    raw.cover ??
+    raw.banner ??
+    raw.company?.image ??
+    raw.company?.logo ??
+    null
+
+  // Company logo for center circle
+  const logo = raw.company?.logo ?? null
+  const logo_url = resolveUrl(logo)
+
+  // Company image for background
+  const companyImage = raw.company?.image ?? null
+  const companyImage_url = resolveUrl(companyImage)
 
   return {
     ...raw,
@@ -54,8 +75,12 @@ export function mapOffer(raw) {
     vendor,
     discount,
     price,
+    coin,
     image,
     image_url: resolveUrl(image),
+    logo_url,
+    company_image_url: companyImage_url,
+    company: raw.company ?? null,
     description: raw.description ?? raw.desc ?? raw.content ?? '',
   }
 }
@@ -75,19 +100,23 @@ export function mapUserOffer(raw) {
     discount: offer?.discount ?? 0,
     price: offer?.price ?? 0,
     image_url: offer?.image_url ?? null,
+    company_image_url: offer?.company_image_url ?? null,
+    logo_url: offer?.logo_url ?? null,
+    company: offer?.company ?? null,
     description: offer?.description ?? '',
   }
 }
 
 export async function listOffers() {
   const res = await api.get('/offer')
-  const data = res?.data ?? res
-
+  // Response format: { success: 200, message: "...", data: { data: [...], ...pagination } } or { data: [...] }
+  const responseData = res?.data ?? {}
+  
+  // Handle paginated response: data can be { data: [...], current_page, ... } or direct array
   const payload =
-    data?.offers ??
-    data?.data?.offers ??
-    data?.data ??
-    data
+    responseData?.offers ??
+    responseData?.data ??
+    responseData
 
   const list =
     Array.isArray(payload)
@@ -98,33 +127,39 @@ export async function listOffers() {
 
   const offers = list.map(mapOffer).filter(Boolean)
 
-  const user = data?.user ?? data?.data?.user ?? null
+  const user = responseData?.user ?? null
   return { offers, user, meta: payload ?? null }
 }
 
 export async function listUserOffers() {
   const res = await api.get('/offer/user')
-  const data = res?.data ?? res
-
-  const payload =
-    data?.userOffers ??
-    data?.user_offers ??
-    data?.data?.userOffers ??
-    data?.data?.user_offers ??
-    data?.data ??
-    data
+  // Response format: { success: 200, message: "...", data: { userOffers: { data: [...], ...pagination } } } or { data: { userOffers: [...] } }
+  const responseData = res?.data ?? {}
+  
+  // Handle paginated response: userOffers can be { data: [...], current_page, ... } or direct array
+  const userOffersPayload =
+    responseData?.userOffers ??
+    responseData?.user_offers ??
+    responseData?.data?.userOffers ??
+    responseData?.data?.user_offers ??
+    responseData?.data ??
+    responseData
 
   const list =
-    Array.isArray(payload)
-      ? payload
-      : Array.isArray(payload?.data)
-        ? payload.data
-        : toArray(payload)
+    Array.isArray(userOffersPayload)
+      ? userOffersPayload
+      : Array.isArray(userOffersPayload?.data)
+        ? userOffersPayload.data
+        : toArray(userOffersPayload)
 
   const userOffers = list.map(mapUserOffer).filter(Boolean)
-  const user = data?.user ?? data?.data?.user ?? null
+  const user = responseData?.user ?? null
 
-  return { userOffers, user, meta: payload ?? null }
+  return { 
+    userOffers, 
+    user, 
+    meta: userOffersPayload ?? null 
+  }
 }
 
 export async function redeemOffer(offerId) {
