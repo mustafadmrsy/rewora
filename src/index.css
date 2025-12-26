@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+:root {
+  --bg-0: #121212;
+  --bg-1: #1e1e1e;
+  --card: rgba(255, 255, 255, 0.06);
+  --card-2: rgba(255, 255, 255, 0.08);
+  --border: rgba(255, 255, 255, 0.12);
+  --text: rgba(255, 255, 255, 0.92);
+  --text-2: rgba(255, 255, 255, 0.62);
+  --gold: #d6ff00;
+  --gold-2: #c9f000;
+  --shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  /* Arkaplanda banding/ton geçişi istemiyoruz: tek renk arka plan */
+  background: var(--bg-1);
+  color: var(--text);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.rewora-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+  scroll-behavior: smooth;
+}
+
+.rewora-scroll::-webkit-scrollbar {
+  height: 10px;
+}
+
+.rewora-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.rewora-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(214, 255, 0, 0.42), rgba(255, 255, 255, 0.14));
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.rewora-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(214, 255, 0, 0.58), rgba(255, 255, 255, 0.18));
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
