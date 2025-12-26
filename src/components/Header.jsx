@@ -219,22 +219,6 @@ export default function Header({ title = 'Rewora', gold = 5800 }) {
               </div>
             </div>
             <div className="py-2">
-              {mobileNav.map((item) => (
-                <button
-                  key={item.to}
-                  type="button"
-                  onClick={() => {
-                    setOpenProfileMenu(false)
-                    navigate(item.to)
-                  }}
-                  className="w-full px-4 py-3 text-left text-sm text-white/80 hover:bg-white/8 transition flex items-center gap-3"
-                >
-                  {item.icon ? <item.icon size={16} className="text-white/70" /> : null}
-                  <span className="font-medium text-white">{item.label}</span>
-                </button>
-              ))}
-
-              <div className="my-2 h-px bg-white/10" />
               <button
                 type="button"
                 onClick={() => {
