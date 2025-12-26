@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { ArrowRight, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Card from '../components/Card'
 import { Button, GoldBadge, ProgressBar } from '../components/ui'
-import { tasks as seedTasks } from '../data/tasks'
+import { listMissions, listUserMissions } from '../lib/missionsApi'
 
 function ActiveTaskCard({ task, onContinue }) {
   return (
@@ -48,13 +48,17 @@ function RecommendedTaskCard({ task, onInspect }) {
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 min-w-0">
             <div className="h-16 w-16 shrink-0 overflow-hidden rounded-[18px] border border-white/10 bg-white/6">
-              <div className="h-full w-full bg-gradient-to-br from-white/10 via-white/0 to-[color:var(--gold)]/10" />
+              {task?.image_url ? (
+                <img src={task.image_url} alt="" className="h-full w-full object-cover" loading="lazy" />
+              ) : (
+                <div className="h-full w-full bg-gradient-to-br from-white/10 via-white/0 to-[color:var(--gold)]/10" />
+              )}
             </div>
             <div className="min-w-0">
               <div className="truncate text-lg font-semibold tracking-tight text-white">{task.title}</div>
               <div className="mt-2 flex items-center gap-2 text-sm text-white/55">
                 <Clock size={16} />
-                <span>{task.duration}</span>
+                <span>{task.duration ?? ''}</span>
               </div>
             </div>
           </div>
@@ -83,12 +87,70 @@ function RecommendedTaskCard({ task, onInspect }) {
 
 export default function Tasks() {
   const navigate = useNavigate()
-  const tasks = useMemo(() => seedTasks, [])
-  const activeTask = useMemo(() => tasks.find((t) => t.progress > 0) ?? tasks[0], [tasks])
-  const recommended = useMemo(
-    () => tasks.filter((t) => t.id !== activeTask?.id),
-    [tasks, activeTask],
+
+  const [loading, setLoading] = useState(true)
+  const [missions, setMissions] = useState([])
+  const [userMissions, setUserMissions] = useState([])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      setLoading(true)
+      try {
+        const [m, um] = await Promise.all([listMissions(), listUserMissions()])
+        if (cancelled) return
+        setMissions(m.missions ?? [])
+        setUserMissions(um.userMissions ?? [])
+      } catch {
+        if (cancelled) return
+        setMissions([])
+        setUserMissions([])
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const activeUserMission = useMemo(
+    () => userMissions.find((um) => String(um?.status ?? '') === 'pending') ?? null,
+    [userMissions],
   )
+
+  const activeTask = useMemo(() => {
+    const m = activeUserMission?.mission
+    if (!m) return null
+    return {
+      id: m.id,
+      title: m.title,
+      reward: m.coin,
+      progress: 50,
+      duration: '',
+      image_url: m.image_url,
+    }
+  }, [activeUserMission])
+
+  const takenMissionIds = useMemo(
+    () => new Set((userMissions ?? []).map((um) => um?.mission_id).filter(Boolean)),
+    [userMissions],
+  )
+
+  const recommended = useMemo(() => {
+    return (missions ?? [])
+      .filter((m) => !takenMissionIds.has(m.id))
+      .map((m) => ({
+        id: m.id,
+        title: m.title,
+        reward: m.coin,
+        duration: '',
+        image_url: m.image_url,
+      }))
+  }, [missions, takenMissionIds])
   const pageSize = 2
   const [page, setPage] = useState(0)
   const totalPages = Math.max(1, Math.ceil(recommended.length / pageSize))
@@ -99,7 +161,9 @@ export default function Tasks() {
 
   return (
     <div className="space-y-6">
-      <ActiveTaskCard task={activeTask} onContinue={() => navigate(`/gorevler/${activeTask.id}`)} />
+      {loading ? null : activeTask ? (
+        <ActiveTaskCard task={activeTask} onContinue={() => navigate(`/gorevler/${activeTask.id}`)} />
+      ) : null}
 
       <div className="flex items-center justify-between">
         <div className="text-lg font-semibold text-white">Önerilenler</div>

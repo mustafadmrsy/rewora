@@ -1,82 +1,79 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import Card from '../components/Card'
 import { Bell, Clock } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { Button, Chip } from '../components/ui'
-
-const data = [
-  {
-    id: 1,
-    title: 'Yeni görev önerisi',
-    desc: '5 dk içinde 1200 altın kazanabileceğin mini görev hazır.',
-    time: '1 saat önce',
-    type: 'gorev',
-  },
-  {
-    id: 2,
-    title: 'Ödül stok güncellendi',
-    desc: 'Halley Coffee tekrar aktif, kaçırma!',
-    time: '2 saat önce',
-    type: 'odul',
-  },
-  {
-    id: 3,
-    title: 'Görev onaylandı',
-    desc: 'Eğlenceni Göster görevin onaylandı, altın hesaba geçti.',
-    time: 'Dün',
-    type: 'gorev',
-  },
-  {
-    id: 4,
-    title: 'Yeni partner mağaza',
-    desc: 'FitStore partnerleri eklendi. Spor ekipmanında %14 indirim.',
-    time: '2 gün önce',
-    type: 'odul',
-  },
-  {
-    id: 5,
-    title: 'Mini ödül kazandın',
-    desc: 'Vera Makarna kısa görevini tamamladın, 1200 altın eklendi.',
-    time: '3 gün önce',
-    type: 'odul',
-  },
-  {
-    id: 6,
-    title: 'Görev süresi bitiyor',
-    desc: 'Alışveriş Avı görevinde 30 dk kaldı, fişini yüklemeyi unutma.',
-    time: '3 gün önce',
-    type: 'gorev',
-  },
-  {
-    id: 7,
-    title: 'Ödül indirimi bitti',
-    desc: 'Sinema Bileti indirim süresi doldu, yakında yenilenecek.',
-    time: '4 gün önce',
-    type: 'odul',
-  },
-  {
-    id: 8,
-    title: 'Hızlı Görev hazır',
-    desc: 'Su Hatırlatıcısı için 8/8 bardak tamamla, 2100 altın kazan.',
-    time: '5 gün önce',
-    type: 'gorev',
-  },
-]
+import { listNotifications, markAllNotificationsRead } from '../lib/notificationsApi'
 
 export default function Notifications() {
+  const navigate = useNavigate()
   const [filter, setFilter] = useState('tum')
   const pageSize = 4
   const [page, setPage] = useState(0)
 
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [marking, setMarking] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      setLoading(true)
+      try {
+        const res = await listNotifications()
+        if (cancelled) return
+        setItems(res.notifications ?? [])
+      } catch {
+        if (cancelled) return
+        setItems([])
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const filtered = useMemo(() => {
-    if (filter === 'tum') return data
-    return data.filter((d) => d.type === filter)
-  }, [filter])
+    if (filter === 'tum') return items
+    return items.filter((d) => d.type === filter)
+  }, [filter, items])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
   const current = useMemo(
     () => filtered.slice(page * pageSize, page * pageSize + pageSize),
     [filtered, page],
   )
+
+  function goToTarget(item) {
+    const page = String(item?.target_page ?? '').toLowerCase()
+    const id = item?.target_id
+    if (!page) return
+
+    if ((page === 'post' || page === 'post_detail' || page === 'postdetail') && id) {
+      navigate(`/post/${id}`)
+      return
+    }
+
+    if ((page === 'profile' || page === 'profil') && id) {
+      navigate(`/profil/${id}`)
+      return
+    }
+
+    if (page === 'gorevler' || page === 'gorev' || page === 'task' || page === 'tasks') {
+      navigate(id ? `/gorevler/${id}` : '/gorevler')
+      return
+    }
+
+    if (page === 'oduller' || page === 'odul' || page === 'reward' || page === 'rewards') {
+      navigate(id ? `/oduller/${id}` : '/oduller')
+      return
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -91,18 +88,28 @@ export default function Notifications() {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <Chip active={filter === 'tum'} onClick={() => { setFilter('tum'); setPage(0) }}>
-          Tümü
-        </Chip>
-          <Chip active={filter === 'gorev'} onClick={() => { setFilter('gorev'); setPage(0) }}>
-          Görev
-        </Chip>
-          <Chip active={filter === 'odul'} onClick={() => { setFilter('odul'); setPage(0) }}>
-          Ödül
-        </Chip>
-        </div>
         <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="text-[11px] font-semibold text-white"
+            type="button"
+            disabled={marking || loading}
+            onClick={async () => {
+              if (marking) return
+              try {
+                setMarking(true)
+                await markAllNotificationsRead()
+                const res = await listNotifications()
+                setItems(res.notifications ?? [])
+              } finally {
+                setMarking(false)
+              }
+            }}
+          >
+            {marking ? 'İşleniyor...' : 'Tümünü okundu yap'}
+          </Button>
+
           <button
             type="button"
             className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/12 bg-white/6 text-white transition hover:bg-white/10 active:scale-95 disabled:opacity-40"
@@ -128,33 +135,42 @@ export default function Notifications() {
       </div>
 
       <div className="space-y-3">
-        {current.map((item) => (
-          <Card key={item.id} className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_0%,rgba(214,255,0,0.06),transparent_55%)]" />
-            <div className="relative flex items-start gap-3 p-4 sm:p-5">
-              <div
-                className={`mt-1 rounded-full p-2 ${
-                  item.type === 'odul'
-                    ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-400/30'
-                    : 'bg-[color:var(--gold)]/10 text-[color:var(--gold)] border border-[color:var(--gold)]/30'
-                }`}
-              >
-                <Bell size={16} />
-              </div>
-              <div className="min-w-0 flex-1 space-y-1">
-                <div className="text-sm font-semibold text-white">{item.title}</div>
-                <div className="text-sm text-white/65 leading-relaxed">{item.desc}</div>
-                <div className="flex items-center gap-2 text-xs text-white/45">
-                  <Clock size={14} />
-                  <span>{item.time}</span>
+        {loading ? (
+          <Card>
+            <div className="p-5 text-sm text-white/60">Yükleniyor...</div>
+          </Card>
+        ) : current.length ? (
+          current.map((item) => (
+            <Card
+              key={item.id}
+              className="relative overflow-hidden cursor-pointer"
+              onClick={() => goToTarget(item)}
+            >
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_0%,rgba(214,255,0,0.06),transparent_55%)]" />
+              <div className="relative flex items-start gap-3 p-4 sm:p-5">
+                <div className="mt-1 h-12 w-12 overflow-hidden rounded-[14px] border border-white/10 bg-white/6">
+                  {item.image_url ? (
+                    <img src={item.image_url} alt="" className="h-full w-full object-cover" loading="lazy" />
+                  ) : (
+                    <div className="h-full w-full bg-gradient-to-br from-white/15 to-white/0" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="text-sm font-semibold text-white">{item.title}</div>
+                  <div className="text-sm text-white/65 leading-relaxed">{item.content}</div>
+                  <div className="flex items-center gap-2 text-xs text-white/45">
+                    <Clock size={14} />
+                    <span>{item.time}</span>
+                  </div>
                 </div>
               </div>
-              <Button size="sm" variant="secondary" className="text-[11px] font-semibold text-white">
-                Detayları Aç
-              </Button>
-            </div>
+            </Card>
+          ))
+        ) : (
+          <Card>
+            <div className="p-5 text-sm text-white/60">Bildirim bulunamadı.</div>
           </Card>
-        ))}
+        )}
       </div>
     </div>
   )

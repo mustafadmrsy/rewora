@@ -2,10 +2,52 @@ import React, { useState } from 'react'
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui'
+import { api } from '../lib/apiClient'
+import { getOrCreateDeviceToken, setSession } from '../lib/authStorage'
 
 export default function Login() {
   const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+
+    if (loading) return
+    setError('')
+
+    try {
+      setLoading(true)
+      const deviceToken = getOrCreateDeviceToken()
+
+      const res = await api.post('/auth/login', {
+        email,
+        password,
+        token: deviceToken,
+        type: 'android',
+      })
+
+      const accessToken = res?.data?.access_token
+      const tokenType = res?.data?.token_type
+      const user = res?.data?.user
+
+      if (!accessToken) {
+        setError('Giriş başarısız. Lütfen tekrar deneyin.')
+        return
+      }
+
+      setSession({ accessToken, tokenType, user })
+      navigate('/', { replace: true })
+    } catch (err) {
+      const msg = err?.data?.message
+      setError(typeof msg === 'string' && msg.length ? msg : 'Giriş başarısız. Lütfen tekrar deneyin.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[color:var(--bg-1)]">
@@ -83,7 +125,7 @@ export default function Login() {
             <div className="h-px flex-1 bg-white/10" />
           </div>
 
-          <div className="space-y-3">
+          <form className="space-y-3" onSubmit={handleSubmit}>
             <div className="relative">
               <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/45" />
               <input
@@ -91,6 +133,8 @@ export default function Login() {
                 placeholder="E-posta"
                 inputMode="email"
                 autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
 
@@ -101,6 +145,8 @@ export default function Login() {
                 placeholder="Şifre"
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
               <button
                 type="button"
@@ -122,8 +168,12 @@ export default function Login() {
               </button>
             </div>
 
-            <Button className="h-12 w-full text-sm">Giriş yap</Button>
-          </div>
+            {error ? <div className="px-1 text-xs font-semibold text-rose-300">{error}</div> : null}
+
+            <Button className="h-12 w-full text-sm" disabled={loading} type="submit">
+              {loading ? 'Giriş yapılıyor...' : 'Giriş yap'}
+            </Button>
+          </form>
 
           <div className="pt-2 text-center text-sm text-white/55">
             Hesabın yok mu?{' '}

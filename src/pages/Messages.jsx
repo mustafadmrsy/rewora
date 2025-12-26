@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Search, Send, MoreVertical } from 'lucide-react'
 import Card from '../components/Card'
 import { Button } from '../components/ui'
+import { getEcho } from '../lib/echo'
 
 const chats = [
   {
@@ -123,6 +124,24 @@ export default function Messages() {
   const [isMobile, setIsMobile] = useState(false)
   const [showThread, setShowThread] = useState(false)
   const [page, setPage] = useState(1)
+
+  useEffect(() => {
+    const conversationId = selected
+    if (!conversationId) return
+
+    const echo = getEcho()
+    const channelName = `conversation.${conversationId}`
+
+    const channel = echo.private(channelName)
+    const stop = channel.listenToAll((eventName, eventData) => {
+      console.log('[Echo]', channelName, eventName, eventData)
+    })
+
+    return () => {
+      if (typeof stop === 'function') stop()
+      echo.leave(channelName)
+    }
+  }, [selected])
 
   useEffect(() => {
     function sync() {

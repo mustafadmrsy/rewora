@@ -3,7 +3,7 @@ import { MapPin, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Card from '../components/Card'
 import { Button, Chip, GoldBadge } from '../components/ui'
-import { rewards } from '../data/rewards'
+import { listOffers, listUserOffers } from '../lib/rewardsApi'
 
 function RewardCard({ item }) {
   const navigate = useNavigate()
@@ -12,7 +12,11 @@ function RewardCard({ item }) {
     <Card>
       <div className="p-5">
         <div className="relative overflow-hidden rounded-[18px] border border-white/10 bg-white/6">
-          <div className="aspect-[16/8] w-full bg-gradient-to-br from-white/10 via-white/0 to-white/10" />
+          {item?.image_url ? (
+            <img src={item.image_url} alt="" className="aspect-[16/8] w-full object-cover" loading="lazy" />
+          ) : (
+            <div className="aspect-[16/8] w-full bg-gradient-to-br from-white/10 via-white/0 to-white/10" />
+          )}
           <button className="absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/45 text-[color:var(--gold)] backdrop-blur border border-white/10">
             <MapPin size={18} />
           </button>
@@ -50,7 +54,10 @@ function RewardCard({ item }) {
 export default function Rewards() {
   const [tab, setTab] = useState('oduller')
 
-  const items = useMemo(() => rewards, [])
+  const [loading, setLoading] = useState(true)
+  const [items, setItems] = useState([])
+  const [history, setHistory] = useState([])
+  const [user, setUser] = useState(null)
   const [pageSize, setPageSize] = useState(4)
   const [page, setPage] = useState(0)
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize))
@@ -58,6 +65,33 @@ export default function Rewards() {
     () => items.slice(page * pageSize, page * pageSize + pageSize),
     [items, page, pageSize],
   )
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      setLoading(true)
+      try {
+        const [offersRes, userOffersRes] = await Promise.all([listOffers(), listUserOffers()])
+        if (cancelled) return
+        setItems(offersRes.offers ?? [])
+        setHistory(userOffersRes.userOffers ?? [])
+        setUser(userOffersRes.user ?? offersRes.user ?? null)
+      } catch {
+        if (cancelled) return
+        setItems([])
+        setHistory([])
+        setUser(null)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     function syncPageSize() {
@@ -120,20 +154,42 @@ export default function Rewards() {
       </div>
 
       {tab === 'gecmis' ? (
-        <Card>
-          <div className="p-6">
-            <div className="text-lg font-semibold text-white">Geçmiş</div>
-            <div className="mt-2 text-sm text-white/55">
-              Buraya daha sonra sipariş/geçmiş akışı gelecek.
+        <div className="space-y-4">
+          <Card>
+            <div className="p-6">
+              <div className="text-lg font-semibold text-white">Geçmiş</div>
+              <div className="mt-2 text-sm text-white/55">
+                {loading ? 'Yükleniyor...' : history.length ? 'Kullandığınız ödüller:' : 'Henüz ödül geçmişiniz yok.'}
+              </div>
             </div>
-          </div>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {current.map((it) => (
-            <RewardCard key={it.id} item={it} />
-          ))}
+          </Card>
+
+          {history.length ? (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {history.map((it) => (
+                <RewardCard key={it.id} item={it.offer ?? it} />
+              ))}
+            </div>
+          ) : null}
         </div>
+      ) : (
+        <>
+          {loading ? (
+            <Card>
+              <div className="p-6 text-sm text-white/55">Yükleniyor...</div>
+            </Card>
+          ) : current.length ? (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {current.map((it) => (
+                <RewardCard key={it.id} item={it} />
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <div className="p-6 text-sm text-white/55">Ödül bulunamadı.</div>
+            </Card>
+          )}
+        </>
       )}
     </div>
   )

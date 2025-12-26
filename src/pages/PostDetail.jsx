@@ -3,7 +3,7 @@ import { ArrowLeft, CheckCircle, Flag, Heart, MessageCircle, Send, MoreVertical,
 import { useNavigate, useParams } from 'react-router-dom'
 import Card from '../components/Card'
 import { Button, cn, GoldBadge, IconButton } from '../components/ui'
-import { posts } from '../data/posts'
+import { addReview, getPost, listReviews, reportPost, resolvePostImageUrl, toggleLike } from '../lib/postsApi'
 
 export default function PostDetail() {
   const navigate = useNavigate()
@@ -16,6 +16,35 @@ export default function PostDetail() {
   const [reportOpen, setReportOpen] = useState(false)
   const [reportReason, setReportReason] = useState('')
   const [reportDetails, setReportDetails] = useState('')
+
+  const [loading, setLoading] = useState(true)
+  const [post, setPost] = useState(null)
+  const [comments, setComments] = useState([])
+  const [liked, setLiked] = useState(false)
+  const [likes, setLikes] = useState(0)
+  const [comment, setComment] = useState('')
+  const [imageError, setImageError] = useState(false)
+  const [avatarError, setAvatarError] = useState(false)
+
+  function CommentAvatar({ url }) {
+    const [error, setError] = useState(false)
+
+    return (
+      <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-white/10 bg-white/8">
+        {url && !error ? (
+          <img
+            src={url}
+            alt=""
+            className="h-full w-full object-cover"
+            loading="lazy"
+            onError={() => setError(true)}
+          />
+        ) : (
+          <div className="h-full w-full bg-gradient-to-br from-white/15 to-white/0" />
+        )}
+      </div>
+    )
+  }
 
   useEffect(() => {
     return () => {
@@ -37,37 +66,68 @@ export default function PostDetail() {
     setMenuOpen(true)
   }
 
-  const post = useMemo(() => posts.find((p) => String(p.id) === String(id)) ?? null, [id])
-  const seedComments = useMemo(
-    () => [
-      { id: 1, user: '@cem', text: 'Güzel kare, görev nerede?', time: '2s' },
-      { id: 2, user: '@melis', text: 'Altın kaç veriyor?', time: '5s' },
-      { id: 3, user: '@arda', text: 'Harika ışık yakalamışsın!', time: '12s' },
-    ],
-    [],
-  )
-  const [comments, setComments] = useState(seedComments)
-  const [liked, setLiked] = useState(false)
-  const [likes, setLikes] = useState(post?.likes ?? 0)
-  const [comment, setComment] = useState('')
+  useEffect(() => {
+    let cancelled = false
 
-  function submitComment() {
+    async function load() {
+      setLoading(true)
+      try {
+        const detail = await getPost(id)
+        const reviewsRes = await listReviews(id)
+        if (cancelled) return
+
+        setPost(detail.post)
+        setLikes(detail.post?.likes ?? 0)
+        setLiked(Boolean(detail.post?.is_liked))
+
+        const mapped = (reviewsRes ?? []).map((r) => ({
+          id: r?.id ?? r?.review_id ?? Date.now(),
+          user: r?.user?.username ? `@${r.user.username}` : r?.user?.fname ? `@${r.user.fname}` : '@kullanici',
+          text: r?.review ?? r?.content ?? r?.text ?? '',
+          time: r?.created_at ? new Date(r.created_at).toLocaleString('tr-TR') : '',
+          user_photo_url: resolvePostImageUrl(r?.user?.photo ?? null),
+        }))
+        setComments(mapped)
+        setPost((prev) => (prev ? { ...prev, comments: mapped.length } : prev))
+      } catch {
+        if (cancelled) return
+        setPost(null)
+        setComments([])
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    if (id) load()
+
+    return () => {
+      cancelled = true
+    }
+  }, [id])
+
+  async function submitComment() {
     const trimmed = comment.trim()
     if (!trimmed) return
 
-    const newComment = {
-      id: Date.now(),
-      user: '@sen',
-      text: trimmed,
-      time: 'şimdi',
+    try {
+      await addReview({ postId: id, review: trimmed })
+      setComment('')
+      const reviewsRes = await listReviews(id)
+      const mapped = (reviewsRes ?? []).map((r) => ({
+        id: r?.id ?? r?.review_id ?? Date.now(),
+        user: r?.user?.username ? `@${r.user.username}` : r?.user?.fname ? `@${r.user.fname}` : '@kullanici',
+        text: r?.review ?? r?.content ?? r?.text ?? '',
+        time: r?.created_at ? new Date(r.created_at).toLocaleString('tr-TR') : '',
+        user_photo_url: resolvePostImageUrl(r?.user?.photo ?? null),
+      }))
+      setComments(mapped)
+      setPost((prev) => (prev ? { ...prev, comments: mapped.length } : prev))
+    } catch {
+      showToast('Hata', 'Yorum eklenemedi. Lütfen tekrar deneyin.')
     }
-
-    setComments((prev) => [...prev, newComment])
-
-    setComment('')
   }
 
-  if (!post) {
+  if (!post && !loading) {
     return (
       <div className="mx-auto max-w-[920px]">
         <Card>
@@ -88,9 +148,7 @@ export default function PostDetail() {
   function renderComment(c) {
     return (
       <div key={c.id} className="flex items-start gap-2">
-        <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-white/10 bg-white/8">
-          <div className="h-full w-full bg-gradient-to-br from-white/15 to-white/0" />
-        </div>
+        <CommentAvatar url={c.user_photo_url} />
         <div className="min-w-0 flex-1 text-sm text-white/80">
           <span className="font-semibold text-white">{c.user}</span>{' '}
           <span className="font-semibold text-white">{c.text}</span>
@@ -109,14 +167,14 @@ export default function PostDetail() {
               <ArrowLeft size={18} />
             </IconButton>
             <div className="min-w-0">
-              <div className="truncate text-sm font-semibold text-white">{post.handle}</div>
-              <div className="truncate text-xs text-white/45">{post.subtitle}</div>
+              <div className="truncate text-sm font-semibold text-white">{post?.handle ?? ''}</div>
+              <div className="truncate text-xs text-white/45">{post?.subtitle ?? ''}</div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <GoldBadge className="px-3 py-1">
-              <span className="text-xs font-semibold">{post.gold}</span>
+              <span className="text-xs font-semibold">{post?.gold ?? 0}</span>
               <span className="text-xs font-semibold">altın</span>
             </GoldBadge>
             <IconButton
@@ -136,7 +194,16 @@ export default function PostDetail() {
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
           <Card className="overflow-hidden">
             <div className="relative">
-              <div className="aspect-square w-full bg-gradient-to-br from-white/10 via-white/0 to-[color:var(--gold)]/12" />
+              {post?.image_url && !imageError ? (
+                <img
+                  src={post.image_url}
+                  alt=""
+                  className="aspect-square w-full object-cover"
+                  onError={() => setImageError(true)}
+                />
+              ) : (
+                <div className="aspect-square w-full bg-gradient-to-br from-white/10 via-white/0 to-[color:var(--gold)]/12" />
+              )}
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(214,255,0,0.16),transparent_50%)]" />
             </div>
           </Card>
@@ -145,14 +212,24 @@ export default function PostDetail() {
             <div className="flex flex-col h-full">
               <div className="flex items-center gap-3 px-5 pt-5">
                 <div className="h-10 w-10 overflow-hidden rounded-full border border-white/10 bg-white/8">
-                  <div className="h-full w-full bg-gradient-to-br from-white/15 to-white/0" />
+                  {post?.user_photo_url && !avatarError ? (
+                    <img
+                      src={post.user_photo_url}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                      onError={() => setAvatarError(true)}
+                    />
+                  ) : (
+                    <div className="h-full w-full bg-gradient-to-br from-white/15 to-white/0" />
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <div className="truncate text-sm font-semibold text-white">{post.handle}</div>
-                    <div className="text-xs text-white/45">{post.time}</div>
+                    <div className="truncate text-sm font-semibold text-white">{post?.handle ?? ''}</div>
+                    <div className="text-xs text-white/45">{post?.time ?? ''}</div>
                   </div>
-                  <div className="truncate text-xs text-white/45">{post.category}</div>
+                  <div className="truncate text-xs text-white/45">{post?.category ?? ''}</div>
                 </div>
                 <IconButton
                   type="button"
@@ -168,10 +245,10 @@ export default function PostDetail() {
               </div>
 
             <div className="px-5 pt-4 pb-3 border-b border-white/10">
-              {post.caption ? (
+              {post?.caption ? (
                 <div className="text-sm text-white/80 leading-relaxed">
-                  <span className="font-semibold text-white">{post.handle}</span>{' '}
-                  <span className="text-white/75">{post.caption}</span>
+                  <span className="font-semibold text-white">{post?.handle ?? ''}</span>{' '}
+                  <span className="text-white/75">{post?.caption ?? ''}</span>
                 </div>
               ) : (
                 <div className="text-sm text-white/60">Bu gönderi için açıklama eklenmemiş.</div>
@@ -185,10 +262,17 @@ export default function PostDetail() {
                     'inline-flex items-center gap-2 text-sm text-white/70 transition hover:text-white',
                     liked ? 'text-[color:var(--gold)]' : '',
                   )}
-                  onClick={() => {
-                    if (liked) return
-                    setLiked(true)
-                    setLikes((n) => n + 1)
+                  onClick={async () => {
+                    const prevLiked = liked
+                    setLiked((v) => !v)
+                    setLikes((n) => Math.max(0, n + (prevLiked ? -1 : 1)))
+                    try {
+                      await toggleLike(id)
+                    } catch {
+                      setLiked(prevLiked)
+                      setLikes((n) => Math.max(0, n + (prevLiked ? 1 : -1)))
+                      showToast('Hata', 'Beğeni güncellenemedi.')
+                    }
                   }}
                   type="button"
                 >
@@ -198,15 +282,21 @@ export default function PostDetail() {
 
                 <div className="inline-flex items-center gap-2 text-sm text-white/70">
                   <MessageCircle size={18} className="text-white/70" />
-                  <span>{post.comments}</span>
+                  <span>{post?.comments ?? 0}</span>
                 </div>
               </div>
 
-              <div className="text-xs text-white/45">{post.time}</div>
+              <div className="text-xs text-white/45">{post?.time ?? ''}</div>
             </div>
 
             <div className="flex-1 overflow-auto px-5 pb-4 rewora-scroll">
-              <div className="space-y-4">{comments.map((c) => renderComment(c))}</div>
+              <div className="space-y-4">
+                {loading ? (
+                  <div className="text-sm text-white/55">Yükleniyor...</div>
+                ) : (
+                  comments.map((c) => renderComment(c))
+                )}
+              </div>
             </div>
 
             <div className="border-t border-white/10 px-5 py-4">
@@ -364,11 +454,16 @@ export default function PostDetail() {
                   type="button"
                   className="flex-1 h-11 rounded-full border border-red-500/25 bg-red-500/10 text-sm font-semibold text-red-200 hover:bg-red-500/15 transition cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
                   disabled={!reportReason || !reportDetails.trim()}
-                  onClick={() => {
-                    setReportOpen(false)
-                    setReportReason('')
-                    setReportDetails('')
-                    showToast('Başarılı', 'Şikayetiniz başarıyla gönderildi.')
+                  onClick={async () => {
+                    try {
+                      await reportPost({ postId: id, reason: reportReason, content: reportDetails })
+                      setReportOpen(false)
+                      setReportReason('')
+                      setReportDetails('')
+                      showToast('Başarılı', 'Şikayetiniz başarıyla gönderildi.')
+                    } catch {
+                      showToast('Hata', 'Şikayet gönderilemedi.')
+                    }
                   }}
                 >
                   Gönder

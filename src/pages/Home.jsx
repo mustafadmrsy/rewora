@@ -3,9 +3,9 @@ import { Sparkles, RotateCw } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Card from '../components/Card'
 import { Button, GoldBadge, ProgressBar, Skeleton } from '../components/ui'
-import { posts as seedPosts } from '../data/posts'
 import FeedCard from './home/components/FeedCard'
 import RightColumn from './home/components/RightColumn'
+import { listPosts, toggleLike } from '../lib/postsApi'
 
 function ActiveTaskCard({ task, onContinue }) {
   return (
@@ -50,18 +50,45 @@ export default function Home() {
   const q = (params.get('q') ?? '').trim().toLowerCase()
   const cat = params.get('cat') ?? '#tümü'
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 900)
-    return () => clearTimeout(t)
-  }, [])
+  const [posts, setPosts] = useState([])
 
   const activeTask = useMemo(
     () => ({ id: 1, title: 'Eğlenceni Göster', reward: 5800, progress: 33 }),
     [],
   )
 
-  const posts = useMemo(() => seedPosts, [])
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      setLoading(true)
+      try {
+        const res = await listPosts()
+        if (cancelled) return
+        const nextPosts = res.posts ?? []
+        setPosts(nextPosts)
+
+        setLikedIds(() => new Set(nextPosts.filter((p) => p?.is_liked).map((p) => p.id)))
+        setLikeCounts(() => {
+          const map = {}
+          nextPosts.forEach((p) => {
+            map[p.id] = p.likes
+          })
+          return map
+        })
+      } catch {
+        if (cancelled) return
+        setPosts([])
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const [likedIds, setLikedIds] = useState(() => new Set())
   const [likeCounts, setLikeCounts] = useState(() => {
@@ -162,11 +189,24 @@ export default function Home() {
             <div className="flex flex-wrap items-center justify-end gap-1">
               <button
                 className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-white/6 text-white transition hover:bg-white/10 active:scale-95"
-                onClick={() => {
+                onClick={async () => {
                   if (refreshing) return
                   setRefreshing(true)
-                  navigate('/')
-                  setTimeout(() => setRefreshing(false), 900)
+                  try {
+                    const res = await listPosts()
+                    const nextPosts = res.posts ?? []
+                    setPosts(nextPosts)
+                    setLikedIds(() => new Set(nextPosts.filter((p) => p?.is_liked).map((p) => p.id)))
+                    setLikeCounts(() => {
+                      const map = {}
+                      nextPosts.forEach((p) => {
+                        map[p.id] = p.likes
+                      })
+                      return map
+                    })
+                  } finally {
+                    setTimeout(() => setRefreshing(false), 600)
+                  }
                 }}
                 type="button"
                 aria-label="Yenile"
@@ -207,17 +247,35 @@ export default function Home() {
                   liked={likedIds.has(p.id)}
                   likes={likeCounts[p.id] ?? p.likes}
                   onOpen={() => navigate(`/post/${p.id}`)}
-                  onLike={() => {
+                  onLike={async () => {
+                    const alreadyLiked = likedIds.has(p.id)
+
                     setLikedIds((prev) => {
-                      if (prev.has(p.id)) return prev
                       const next = new Set(prev)
-                      next.add(p.id)
-                      setLikeCounts((counts) => ({
-                        ...counts,
-                        [p.id]: (counts[p.id] ?? p.likes) + 1,
-                      }))
+                      if (alreadyLiked) next.delete(p.id)
+                      else next.add(p.id)
                       return next
                     })
+
+                    setLikeCounts((counts) => ({
+                      ...counts,
+                      [p.id]: Math.max(0, (counts[p.id] ?? p.likes) + (alreadyLiked ? -1 : 1)),
+                    }))
+
+                    try {
+                      await toggleLike(p.id)
+                    } catch {
+                      setLikedIds((prev) => {
+                        const next = new Set(prev)
+                        if (alreadyLiked) next.add(p.id)
+                        else next.delete(p.id)
+                        return next
+                      })
+                      setLikeCounts((counts) => ({
+                        ...counts,
+                        [p.id]: Math.max(0, (counts[p.id] ?? p.likes) + (alreadyLiked ? 1 : -1)),
+                      }))
+                    }
                   }}
                 />
               ))}

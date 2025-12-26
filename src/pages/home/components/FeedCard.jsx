@@ -2,9 +2,32 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { CheckCircle, Flag, Heart, MessageCircle, MoreVertical, Send, UserX } from 'lucide-react'
 import Card from '../../../components/Card'
+import { addReview, listReviews, resolvePostImageUrl } from '../../../lib/postsApi'
+
+function CommentAvatar({ url }) {
+  const [error, setError] = useState(false)
+
+  return (
+    <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-white/10 bg-white/8">
+      {url && !error ? (
+        <img
+          src={url}
+          alt=""
+          className="h-full w-full object-cover"
+          loading="lazy"
+          onError={() => setError(true)}
+        />
+      ) : (
+        <div className="h-full w-full bg-gradient-to-br from-white/15 to-white/0" />
+      )}
+    </div>
+  )
+}
 
 export default function FeedCard({ post, liked, likes, onLike, onOpen }) {
   const [openComments, setOpenComments] = useState(false)
+  const [imageError, setImageError] = useState(false)
+  const [avatarError, setAvatarError] = useState(false)
   const toastTimer = useRef(null)
   const [toast, setToast] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -32,34 +55,60 @@ export default function FeedCard({ post, liked, likes, onLike, onOpen }) {
     setMenuPos({ top, left })
     setMenuOpen(true)
   }
-  const seedCommentItems = useMemo(() => {
-    const base = [
-      { id: 1, user: '@cem', text: 'Güzel olmuş', time: '2s' },
-      { id: 2, user: '@melis', text: 'Görev linki?', time: '5s' },
-      { id: 3, user: '@arda', text: 'Aynen 🔥', time: '12s' },
-      { id: 4, user: '@elif', text: 'Nice!', time: '1d' },
-      { id: 5, user: '@ahmet', text: 'Altın kaç?', time: '2d' },
-      { id: 6, user: '@sena', text: 'Harika', time: '3d' },
-    ]
-    return base.map((c) => ({ ...c, id: Number(`${post.id}${c.id}`) }))
-  }, [post.id])
-  const [commentItems, setCommentItems] = useState(seedCommentItems)
+  const [commentItems, setCommentItems] = useState([])
   const [commentDraft, setCommentDraft] = useState('')
+  const [commentsLoading, setCommentsLoading] = useState(false)
 
-  function submitLocalComment() {
+  useEffect(() => {
+    if (!openComments) return
+    if (!post?.id) return
+
+    let cancelled = false
+
+    async function loadComments() {
+      setCommentsLoading(true)
+      try {
+        const res = await listReviews(post.id)
+        if (cancelled) return
+        const mapped = (res ?? []).map((r) => ({
+          id: r?.id ?? r?.review_id ?? Date.now(),
+          user: r?.user?.username ? `@${r.user.username}` : r?.user?.fname ? `@${r.user.fname}` : '@kullanici',
+          text: r?.review ?? r?.content ?? r?.text ?? '',
+          time: r?.created_at ? new Date(r.created_at).toLocaleString('tr-TR') : '',
+          user_photo_url: resolvePostImageUrl(r?.user?.photo ?? null),
+        }))
+        setCommentItems(mapped)
+      } finally {
+        if (!cancelled) setCommentsLoading(false)
+      }
+    }
+
+    loadComments()
+    return () => {
+      cancelled = true
+    }
+  }, [openComments, post?.id])
+
+  async function submitComment() {
     const trimmed = commentDraft.trim()
     if (!trimmed) return
+    if (!post?.id) return
 
-    setCommentItems((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        user: '@sen',
-        text: trimmed,
-        time: 'şimdi',
-      },
-    ])
-    setCommentDraft('')
+    try {
+      await addReview({ postId: post.id, review: trimmed })
+      setCommentDraft('')
+      const res = await listReviews(post.id)
+      const mapped = (res ?? []).map((r) => ({
+        id: r?.id ?? r?.review_id ?? Date.now(),
+        user: r?.user?.username ? `@${r.user.username}` : r?.user?.fname ? `@${r.user.fname}` : '@kullanici',
+        text: r?.review ?? r?.content ?? r?.text ?? '',
+        time: r?.created_at ? new Date(r.created_at).toLocaleString('tr-TR') : '',
+        user_photo_url: resolvePostImageUrl(r?.user?.photo ?? null),
+      }))
+      setCommentItems(mapped)
+    } catch {
+      showToast('Hata', 'Yorum eklenemedi. Lütfen tekrar deneyin.')
+    }
   }
 
   return (
@@ -67,14 +116,24 @@ export default function FeedCard({ post, liked, likes, onLike, onOpen }) {
       <div className="p-4">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 overflow-hidden rounded-full border border-white/10 bg-white/8">
-            <div className="h-full w-full bg-gradient-to-br from-white/15 to-white/0" />
+            {post?.user_photo_url && !avatarError ? (
+              <img
+                src={post.user_photo_url}
+                alt=""
+                className="h-full w-full object-cover"
+                loading="lazy"
+                onError={() => setAvatarError(true)}
+              />
+            ) : (
+              <div className="h-full w-full bg-gradient-to-br from-white/15 to-white/0" />
+            )}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <div className="truncate text-sm font-semibold text-white">{post.handle}</div>
-              <div className="text-xs text-white/45">{post.time}</div>
+              <div className="truncate text-sm font-semibold text-white">{post?.handle ?? ''}</div>
+              <div className="text-xs text-white/45">{post?.time ?? ''}</div>
             </div>
-            <div className="truncate text-xs text-white/45">{post.subtitle}</div>
+            <div className="truncate text-xs text-white/45">{post?.subtitle ?? ''}</div>
           </div>
           <button
             type="button"
@@ -100,7 +159,17 @@ export default function FeedCard({ post, liked, likes, onLike, onOpen }) {
           }}
           aria-label="Gönderiyi aç"
         >
-          <div className="aspect-square w-full bg-gradient-to-br from-white/10 via-white/0 to-[color:var(--gold)]/10" />
+          {post?.image_url && !imageError ? (
+            <img
+              src={post.image_url}
+              alt=""
+              className="aspect-square w-full object-cover"
+              loading="lazy"
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <div className="aspect-square w-full bg-gradient-to-br from-white/10 via-white/0 to-[color:var(--gold)]/10" />
+          )}
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(214,255,0,0.16),transparent_45%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
         </div>
 
@@ -139,7 +208,7 @@ export default function FeedCard({ post, liked, likes, onLike, onOpen }) {
               type="button"
             >
               <MessageCircle size={18} className="text-white/70" />
-              <span>{post.comments}</span>
+              <span>{post?.comments ?? 0}</span>
             </button>
           </div>
 
@@ -160,20 +229,24 @@ export default function FeedCard({ post, liked, likes, onLike, onOpen }) {
             </div>
 
             <div className="mt-3 max-h-[190px] space-y-3 overflow-y-auto pr-1 rewora-scroll">
-              {commentItems.map((c) => (
-                <div key={c.id} className="flex items-start gap-2">
-                  <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-white/10 bg-white/8">
-                    <div className="h-full w-full bg-gradient-to-br from-white/15 to-white/0" />
-                  </div>
-                  <div className="min-w-0 flex-1 text-sm">
-                    <div className="min-w-0">
-                      <span className="font-semibold text-white">{c.user}</span>{' '}
-                      <span className="text-white/75">{c.text}</span>
-                      <span className="ml-2 text-xs text-white/40">{c.time}</span>
+              {commentsLoading ? (
+                <div className="text-xs text-white/55">Yükleniyor...</div>
+              ) : commentItems.length ? (
+                commentItems.map((c) => (
+                  <div key={c.id} className="flex items-start gap-2">
+                    <CommentAvatar url={c.user_photo_url} />
+                    <div className="min-w-0 flex-1 text-sm">
+                      <div className="min-w-0">
+                        <span className="font-semibold text-white">{c.user}</span>{' '}
+                        <span className="text-white/75">{c.text}</span>
+                        <span className="ml-2 text-xs text-white/40">{c.time}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <div className="text-xs text-white/55">Henüz yorum yok.</div>
+              )}
             </div>
 
             <div className="mt-4 border-t border-white/10 pt-3">
@@ -188,7 +261,7 @@ export default function FeedCard({ post, liked, likes, onLike, onOpen }) {
                     if (e.key !== 'Enter') return
                     if (e.shiftKey) return
                     e.preventDefault()
-                    submitLocalComment()
+                    submitComment()
                   }}
                   placeholder="Yorum yaz..."
                   className="h-11 flex-1 rounded-full border border-white/12 bg-white/6 px-4 text-sm text-white placeholder:text-white/35 outline-none transition focus:border-[color:var(--gold)]/40"
@@ -198,7 +271,7 @@ export default function FeedCard({ post, liked, likes, onLike, onOpen }) {
                   type="button"
                   disabled={!commentDraft.trim()}
                   aria-label="Gönder"
-                  onClick={submitLocalComment}
+                  onClick={submitComment}
                 >
                   <Send size={16} />
                 </button>

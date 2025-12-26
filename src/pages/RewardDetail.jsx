@@ -1,16 +1,55 @@
-import React from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, MapPin, Ticket, Image as ImageIcon } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button, GoldBadge } from '../components/ui'
-import { rewards } from '../data/rewards'
+import { listOffers, listUserOffers, redeemOffer } from '../lib/rewardsApi'
 
 export default function RewardDetail() {
   const navigate = useNavigate()
   const { id } = useParams()
-  const reward = rewards.find((r) => String(r.id) === String(id)) ?? null
-  const userGold = 0
+  const [loading, setLoading] = useState(true)
+  const [reward, setReward] = useState(null)
+  const [user, setUser] = useState(null)
+  const [redeeming, setRedeeming] = useState(false)
+  const [error, setError] = useState('')
 
-  if (!reward) {
+  const userGold = useMemo(() => Number(user?.coin ?? 0), [user])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      setLoading(true)
+      try {
+        const [offersRes, userOffersRes] = await Promise.all([listOffers(), listUserOffers()])
+        if (cancelled) return
+
+        const offerId = String(id)
+        const fromOffers = (offersRes.offers ?? []).find((o) => String(o.id) === offerId) ?? null
+
+        const fromHistory = (userOffersRes.userOffers ?? [])
+          .map((uo) => uo.offer ?? uo)
+          .find((o) => String(o.id) === offerId)
+          ?? null
+
+        setReward(fromOffers ?? fromHistory)
+        setUser(userOffersRes.user ?? offersRes.user ?? null)
+      } catch {
+        if (cancelled) return
+        setReward(null)
+        setUser(null)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    if (id) load()
+    return () => {
+      cancelled = true
+    }
+  }, [id])
+
+  if (!reward && !loading) {
     return (
       <div className="mx-auto max-w-[860px] px-4 py-6">
         <div className="rounded-[18px] border border-white/10 bg-black/50 px-5 py-6">
@@ -46,16 +85,20 @@ export default function RewardDetail() {
       </div>
 
       <div className="mx-auto max-w-[960px] px-3 sm:px-4 pt-2.5 pb-9 space-y-2.5">
-        <h1 className="text-center text-base font-semibold text-white">{reward.title}</h1>
+        <h1 className="text-center text-base font-semibold text-white">{reward?.title ?? ''}</h1>
 
         <div className="space-y-4">
           {/* Görsel alanı */}
           <div className="relative overflow-hidden rounded-2xl bg-white/6 border border-white/8">
-            <div className="aspect-[3/2] w-full flex items-center justify-center bg-gradient-to-br from-white/10 via-white/4 to-white/10">
-              <div className="flex h-12 w-12 md:h-10 md:w-10 lg:h-9 lg:w-9 items-center justify-center rounded-full bg-black/40 border border-white/15 text-white/70">
-                <ImageIcon size={16} />
+            {reward?.image_url ? (
+              <img src={reward.image_url} alt="" className="aspect-[3/2] w-full object-cover" loading="lazy" />
+            ) : (
+              <div className="aspect-[3/2] w-full flex items-center justify-center bg-gradient-to-br from-white/10 via-white/4 to-white/10">
+                <div className="flex h-12 w-12 md:h-10 md:w-10 lg:h-9 lg:w-9 items-center justify-center rounded-full bg-black/40 border border-white/15 text-white/70">
+                  <ImageIcon size={16} />
+                </div>
               </div>
-            </div>
+            )}
             <button
               type="button"
               className="absolute left-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/75 text-[color:var(--gold)] backdrop-blur border border-white/10"
@@ -69,7 +112,7 @@ export default function RewardDetail() {
               <MapPin size={16} />
             </button>
             <GoldBadge className="absolute bottom-3 right-3 px-3 py-1 text-xs font-semibold shadow-[0_0_0_4px_rgba(214,255,0,0.12)] transition hover:shadow-[0_0_0_6px_rgba(214,255,0,0.16)]">
-              <span className="text-xs font-semibold">{reward.price}</span>
+              <span className="text-xs font-semibold">{reward?.price ?? 0}</span>
               <span className="text-xs font-semibold">altın</span>
             </GoldBadge>
           </div>
@@ -77,13 +120,13 @@ export default function RewardDetail() {
           {/* Bilgi bloğu */}
           <div className="rounded-2xl bg-transparent border-none p-3 sm:p-4 space-y-4">
             <div className="space-y-2 text-center">
-              <div className="text-xl font-bold text-white">%{reward.discount} indirim!</div>
-              <div className="text-[13px] text-white/65 leading-relaxed">{reward.description}</div>
+              <div className="text-xl font-bold text-white">%{reward?.discount ?? 0} indirim!</div>
+              <div className="text-[13px] text-white/65 leading-relaxed">{reward?.description ?? ''}</div>
             </div>
 
             <div className="flex items-center justify-center">
               <GoldBadge className="px-3 py-1 text-sm font-semibold">
-                <span className="text-xs font-semibold">{reward.price}</span>
+                <span className="text-xs font-semibold">{reward?.price ?? 0}</span>
                 <span className="text-xs font-semibold">altın</span>
               </GoldBadge>
             </div>
@@ -91,8 +134,31 @@ export default function RewardDetail() {
 
           {/* Butonlar */}
           <div className="space-y-2.5">
-            <button className="w-full h-11 rounded-full bg-white text-black text-[13px] font-semibold transition hover:bg-white/90">
-              Kuponu kullan
+            {error ? <div className="text-sm font-semibold text-rose-300">{error}</div> : null}
+
+            <button
+              type="button"
+              disabled={loading || redeeming}
+              className="w-full h-11 rounded-full bg-white text-black text-[13px] font-semibold transition hover:bg-white/90 disabled:opacity-60"
+              onClick={async () => {
+                if (!reward?.id) return
+                if (redeeming) return
+                setError('')
+                try {
+                  setRedeeming(true)
+                  await redeemOffer(reward.id)
+                  const userOffersRes = await listUserOffers()
+                  setUser(userOffersRes.user ?? user)
+                  setError('Kupon başarıyla oluşturuldu. Profilinizden kupon koduna ulaşabilirsiniz.')
+                } catch (err) {
+                  const msg = err?.data?.message
+                  setError(typeof msg === 'string' && msg.length ? msg : 'Kupon oluşturulamadı.')
+                } finally {
+                  setRedeeming(false)
+                }
+              }}
+            >
+              {redeeming ? 'İşleniyor...' : 'Kuponu kullan'}
             </button>
             <button className="w-full h-11 rounded-full bg-[color:var(--gold)] text-black text-[13px] font-semibold transition hover:bg-[color:var(--gold-2)]">
               Menüyü Görüntüle
