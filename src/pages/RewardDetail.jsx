@@ -90,7 +90,7 @@ export default function RewardDetail() {
             <ArrowLeft size={22} />
           </button>
           <div className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--gold)] px-3 py-1 text-xs font-semibold text-black">
-            <span>{reward?.coin ?? 0} coin</span>
+            <span>{reward?.coin ?? 0} altın</span>
           </div>
         </div>
       </div>
@@ -154,7 +154,7 @@ export default function RewardDetail() {
             </button>
             <GoldBadge className="absolute bottom-3 right-3 z-10 px-3 py-1 text-xs font-semibold shadow-[0_0_0_4px_rgba(214,255,0,0.12)] transition hover:shadow-[0_0_0_6px_rgba(214,255,0,0.16)]">
               <span className="text-xs font-semibold">{reward?.coin ?? 0}</span>
-              <span className="text-xs font-semibold">gold</span>
+              <span className="text-xs font-semibold">altın</span>
             </GoldBadge>
           </div>
 
@@ -168,7 +168,7 @@ export default function RewardDetail() {
             <div className="flex items-center justify-center">
               <GoldBadge className="px-3 py-1 text-sm font-semibold">
                 <span className="text-xs font-semibold">{reward?.coin ?? 0}</span>
-                <span className="text-xs font-semibold">gold</span>
+                <span className="text-xs font-semibold">altın</span>
               </GoldBadge>
             </div>
           </div>
@@ -210,7 +210,6 @@ export default function RewardDetail() {
                 {showMenu ? 'Menüyü Gizle' : 'Menüyü Görüntüle'}
               </button>
 
-              {/* Menü - Butonun hemen altında */}
               {showMenu && reward?.qr_categories && reward.qr_categories.length > 0 && (
                 <div ref={menuRef} id="menu-section" className="space-y-4 rounded-2xl border border-white/10 bg-white/6 p-4">
                   <div className="text-lg font-semibold text-white">Menü</div>

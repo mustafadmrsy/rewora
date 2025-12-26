@@ -217,7 +217,7 @@ export default function Rewards() {
             Ödüller
           </div>
           <div className="mt-1 text-sm text-white/55">
-            Altınlarını partner ödüllerde kullan.
+            Coinlerini partner ödüllerde kullan.
           </div>
         </div>
         {tab === 'oduller' ? (

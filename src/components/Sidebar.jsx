@@ -26,17 +26,7 @@ export default function Sidebar({ gold = 5800 }) {
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-[92px] border-r border-white/10 bg-black/20 backdrop-blur-xl hidden lg:block">
       <div className="flex h-full flex-col items-center gap-4 px-3 py-5">
-        <div className="flex flex-col items-center gap-3 w-full mt-2">
-          <button
-            type="button"
-            onClick={() => navigate('/profil')}
-            className="h-12 w-12 overflow-hidden rounded-full border border-white/10 bg-white/8 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--gold)]/60"
-            style={{ cursor: 'pointer' }}
-            aria-label="Profil"
-          >
-            <div className="h-full w-full bg-gradient-to-br from-white/15 to-white/0 scale-110" />
-          </button>
-        </div>
+       
 
         <div className="mt-2 flex w-full flex-col gap-2">
           {nav.slice(0, 1).map((item) => {
@@ -128,16 +118,6 @@ export default function Sidebar({ gold = 5800 }) {
               </NavLink>
             )
           })}
-        </div>
-
-        <div className="mt-auto flex w-full flex-col items-center gap-3">
-          <button
-            type="button"
-            onClick={() => navigate('/giris')}
-            className="flex h-10 w-[calc(100%+8px)] items-center justify-center rounded-2xl border border-red-500/25 bg-red-500/10 text-xs font-semibold text-red-200 transition hover:bg-red-500/15 hover:border-red-500/35 cursor-pointer"
-          >
-            Çıkış Yap
-          </button>
         </div>
       </div>
     </aside>

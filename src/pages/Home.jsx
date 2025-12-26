@@ -6,6 +6,7 @@ import { Button, GoldBadge, ProgressBar, Skeleton } from '../components/ui'
 import FeedCard from './home/components/FeedCard'
 import RightColumn from './home/components/RightColumn'
 import { listPosts, toggleLike } from '../lib/postsApi'
+import { listUserMissions } from '../lib/missionsApi'
 
 function ActiveTaskCard({ task, onContinue }) {
   return (
@@ -20,7 +21,7 @@ function ActiveTaskCard({ task, onContinue }) {
           </div>
           <GoldBadge className="shrink-0">
             <span className="text-xs font-semibold">{task.reward}</span>
-            <span className="text-xs font-semibold">Altın</span>
+            <span className="text-xs font-semibold">gold</span>
           </GoldBadge>
         </div>
 
@@ -51,11 +52,8 @@ export default function Home() {
   const cat = params.get('cat') ?? '#tümü'
   const [loading, setLoading] = useState(true)
   const [posts, setPosts] = useState([])
-
-  const activeTask = useMemo(
-    () => ({ id: 1, title: 'Eğlenceni Göster', reward: 5800, progress: 33 }),
-    [],
-  )
+  const [activeTask, setActiveTask] = useState(null)
+  const [loadingTask, setLoadingTask] = useState(true)
 
   useEffect(() => {
     let cancelled = false
@@ -109,6 +107,50 @@ export default function Home() {
     })
   }, [posts])
 
+  // Load active task
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadTask() {
+      setLoadingTask(true)
+      try {
+        const res = await listUserMissions()
+        if (cancelled) return
+        
+        // Find active task (status: 'pending' means active/in progress)
+        const activeUserMission = res.userMissions?.find(
+          (um) => String(um?.status ?? '') === 'pending'
+        )
+        
+        if (activeUserMission && activeUserMission.mission) {
+          const mission = activeUserMission.mission
+          // Use default progress of 50% if not available (similar to Tasks.jsx)
+          const progress = activeUserMission.progress ?? activeUserMission.percentage ?? 50
+          
+          setActiveTask({
+            id: activeUserMission.mission_id ?? mission.id,
+            title: mission.title ?? '',
+            reward: mission.coin ?? 0,
+            progress: progress,
+            description: mission.description ?? '',
+          })
+        } else {
+          setActiveTask(null)
+        }
+      } catch {
+        if (cancelled) return
+        setActiveTask(null)
+      } finally {
+        if (!cancelled) setLoadingTask(false)
+      }
+    }
+
+    loadTask()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const filteredPosts = useMemo(() => {
     return posts.filter((p) => {
       const matchesCat = cat === '#tümü' || p.category === cat
@@ -129,10 +171,10 @@ export default function Home() {
   )
 
   const activeTasks = useMemo(
-    () => [
-      activeTask,
-      { id: 2, title: 'Mini ödül avı', reward: 2200, progress: 48 },
-    ],
+    () => {
+      if (!activeTask) return []
+      return [activeTask]
+    },
     [activeTask],
   )
 
@@ -182,7 +224,15 @@ export default function Home() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          <ActiveTaskCard task={activeTask} onContinue={() => navigate('/gorevler')} />
+          {loadingTask ? (
+            <Card className="overflow-hidden">
+              <div className="p-6">
+                <Skeleton className="h-24 w-full" />
+              </div>
+            </Card>
+          ) : activeTask ? (
+            <ActiveTaskCard task={activeTask} onContinue={() => navigate('/gorevler')} />
+          ) : null}
 
           <div className="flex items-center justify-between">
             <div className="text-lg font-semibold text-white">Paylaşımlar</div>

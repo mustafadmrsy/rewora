@@ -198,3 +198,83 @@ export async function addReview({ postId, review }) {
 export async function reportPost({ postId, reason, content }) {
   return api.post(`/post/report/${postId}`, { reason, content })
 }
+
+export async function getProfile(userId) {
+  const res = await api.get(`/profile/${userId}`)
+  // Response format: { success: true, message: "...", data: { profile: {...}, posts: [...], pagination: {...} } }
+  const responseData = res?.data ?? {}
+  
+  const profile = responseData.profile ?? null
+  const posts = Array.isArray(responseData.posts) ? responseData.posts : []
+  const pagination = responseData.pagination ?? responseData.posts_pagination ?? null
+  
+  // Map posts using mapPost function - posts may have different structure in profile
+  const mappedPosts = posts.map((p) => {
+    // If post already has full structure, use mapPost
+    // Otherwise, map minimal structure for profile posts
+    if (p.id && p.image) {
+      return {
+        id: p.id,
+        image: p.image,
+        image_url: resolvePostImageUrl(p.image),
+        // Add other fields if available
+        ...mapPost(p),
+      }
+    }
+    return mapPost(p)
+  }).filter(Boolean)
+  
+  return {
+    profile,
+    posts: mappedPosts,
+    pagination,
+    is_following: responseData.is_following ?? false,
+    is_follower: responseData.is_follower ?? false,
+  }
+}
+
+export async function getFollowers(userId) {
+  const res = await api.get(`/followers/${userId}`)
+  // Response format: { success: true, message: "...", data: { followers: { data: [{ follower: {...} }] } } }
+  const responseData = res?.data ?? {}
+  
+  // Handle paginated response: data.followers.data[].follower
+  const followersPayload = responseData.followers ?? {}
+  const followersList = Array.isArray(followersPayload.data) ? followersPayload.data : []
+  
+  return followersList.map((item) => {
+    if (!item || typeof item !== 'object') return null
+    const follower = item.follower ?? {}
+    return {
+      id: follower.id,
+      name: follower.fname && follower.lname ? `${follower.fname} ${follower.lname}` : follower.fname || follower.lname || 'Kullanıcı',
+      username: follower.username ?? null,
+      photo: follower.photo ?? null,
+      photo_url: resolvePostImageUrl(follower.photo ?? null),
+      subtitle: follower.username ? `@${follower.username}` : null,
+    }
+  }).filter(Boolean)
+}
+
+export async function getFollowing(userId) {
+  const res = await api.get(`/following/${userId}`)
+  // Response format: { success: true, message: "...", data: { following: { data: [{ following: {...} }] } } }
+  const responseData = res?.data ?? {}
+  
+  // Handle paginated response: data.following.data[].following
+  const followingPayload = responseData.following ?? {}
+  const followingList = Array.isArray(followingPayload.data) ? followingPayload.data : []
+  
+  return followingList.map((item) => {
+    if (!item || typeof item !== 'object') return null
+    const following = item.following ?? {}
+    return {
+      id: following.id,
+      name: following.fname && following.lname ? `${following.fname} ${following.lname}` : following.fname || following.lname || 'Kullanıcı',
+      username: following.username ?? null,
+      photo: following.photo ?? null,
+      photo_url: resolvePostImageUrl(following.photo ?? null),
+      subtitle: following.username ? `@${following.username}` : null,
+    }
+  }).filter(Boolean)
+}

@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Bell, Search, Home, ListTodo, Gift, MessageCircle, User } from 'lucide-react'
 import { Chip, GoldBadge, IconButton } from './ui'
+import { clearSession, getUser } from '../lib/authStorage'
+import { resetEcho } from '../lib/echo'
 
 const chips = [
   { label: '#tümü' },
@@ -11,7 +13,7 @@ const chips = [
   { label: '#finans' },
 ]
 
-export default function Header({ title = 'Rewora', gold = 5800 }) {
+export default function Header({ title = 'Rewora' }) {
   const navigate = useNavigate()
   const location = useLocation()
   const [params] = useSearchParams()
@@ -24,6 +26,10 @@ export default function Header({ title = 'Rewora', gold = 5800 }) {
   const [search, setSearch] = useState(qParam)
   const onHome = location.pathname === '/'
   const [openProfileMenu, setOpenProfileMenu] = useState(false)
+  
+  // Get coin from user session
+  const currentUser = getUser()
+  const gold = currentUser?.coin ?? 0
 
   useEffect(() => {
     setSearch(qParam)
@@ -223,6 +229,8 @@ export default function Header({ title = 'Rewora', gold = 5800 }) {
                 type="button"
                 onClick={() => {
                   setOpenProfileMenu(false)
+                  clearSession()
+                  resetEcho()
                   navigate('/giris')
                 }}
                 className="w-full px-4 py-3 text-left text-sm transition flex items-center gap-3 text-red-200 hover:bg-red-500/10"
