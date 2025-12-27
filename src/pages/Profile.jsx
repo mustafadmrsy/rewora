@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, ChevronRight, Menu, Search, CircleDollarSign } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Menu, Search, CircleDollarSign } from 'lucide-react'
 import { GoldBadge } from '../components/ui'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getProfile, toggleLike, resolvePostImageUrl, getFollowers, getFollowing } from '../lib/postsApi'
@@ -197,7 +197,7 @@ export default function Profile() {
             className="absolute left-0 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/6 text-white/80 hover:bg-white/10"
             aria-label="Geri"
           >
-            <ArrowLeft size={20} />
+            <ChevronLeft size={20} />
           </button>
           <div className="text-xl font-semibold tracking-tight text-white">Profil</div>
         </div>
@@ -406,7 +406,7 @@ export default function Profile() {
                 aria-label="Geri"
                 onClick={() => setMenuOpen(false)}
               >
-                <ArrowLeft size={18} />
+                <ChevronLeft size={18} />
               </button>
               <div className="text-lg font-semibold text-white">Menü</div>
             </div>

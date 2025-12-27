@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, MapPin, Ticket, Image as ImageIcon } from 'lucide-react'
+import { MapPin, Ticket, Image as ImageIcon } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button, GoldBadge } from '../components/ui'
 import { listOffers, listUserOffers, redeemOffer } from '../lib/rewardsApi'
@@ -78,23 +78,6 @@ export default function RewardDetail() {
 
   return (
     <div className="min-h-screen bg-[color:var(--bg-1)] text-white">
-      {/* Üst bar */}
-      <div className="sticky top-0 z-10 border-b border-white/8 bg-[color:var(--bg-1)]/92 backdrop-blur">
-        <div className="mx-auto flex max-w-[1100px] items-center justify-between px-3.5 py-2">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="inline-flex h-10 w-10 items-center justify-center text-white transition active:scale-95"
-            aria-label="Geri"
-          >
-            <ArrowLeft size={22} />
-          </button>
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--gold)] px-3 py-1 text-xs font-semibold text-black">
-            <span>{reward?.coin ?? 0} altın</span>
-          </div>
-        </div>
-      </div>
-
       <div className="mx-auto max-w-[960px] px-3 sm:px-4 pt-2.5 pb-9 space-y-2.5">
         <div className="space-y-4">
           {/* Görsel alanı */}
@@ -152,10 +135,6 @@ export default function RewardDetail() {
             >
               <MapPin size={16} />
             </button>
-            <GoldBadge className="absolute bottom-3 right-3 z-10 px-3 py-1 text-xs font-semibold shadow-[0_0_0_4px_rgba(214,255,0,0.12)] transition hover:shadow-[0_0_0_6px_rgba(214,255,0,0.16)]">
-              <span className="text-xs font-semibold">{reward?.coin ?? 0}</span>
-              <span className="text-xs font-semibold">altın</span>
-            </GoldBadge>
           </div>
 
           {/* Bilgi bloğu */}

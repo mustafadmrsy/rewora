@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, CheckCircle, Flag, Heart, MessageCircle, Send, MoreVertical, UserX, Trash2 } from 'lucide-react'
+import { ChevronLeft, CheckCircle, Flag, Heart, MessageCircle, Send, MoreVertical, UserX, Trash2 } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Card from '../components/Card'
 import { Button, cn, GoldBadge, IconButton } from '../components/ui'
@@ -175,7 +175,7 @@ export default function PostDetail() {
             className="inline-flex items-center justify-center text-white/80 transition hover:text-white"
             aria-label="Geri"
           >
-            <ArrowLeft size={20} />
+            <ChevronLeft size={20} />
           </button>
           
           <div className="flex items-center gap-2">

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, Camera } from 'lucide-react'
+import { ChevronLeft, Camera } from 'lucide-react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import Card from '../components/Card'
 import { Button, GoldBadge, IconButton } from '../components/ui'
@@ -95,7 +95,7 @@ export default function TaskComplete() {
     <div className="mx-auto max-w-[920px] space-y-6 px-3 sm:px-0">
       <div className="flex items-center gap-3">
         <IconButton onClick={() => navigate(-1)} type="button" aria-label="Geri">
-          <ArrowLeft size={18} />
+          <ChevronLeft size={18} />
         </IconButton>
         <div className="flex-1 text-center text-lg font-semibold tracking-tight text-white">Tamamla</div>
         <GoldBadge className="px-3 py-1.5">

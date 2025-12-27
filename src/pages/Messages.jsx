@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react'
-import { Search, Send, MoreVertical, ArrowLeft, X } from 'lucide-react'
+import { Search, Send, MoreVertical, ChevronLeft, X } from 'lucide-react'
 import { Button } from '../components/ui'
 import { getEcho } from '../lib/echo'
 import { listConversations, listMessages, sendMessage, resolvePostImageUrl, mapMessage } from '../lib/messagesApi'
@@ -453,7 +453,7 @@ export default function Messages() {
                           className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/6 text-white/80 hover:bg-white/10"
                           aria-label="Geri"
                         >
-                          <ArrowLeft size={18} />
+                          <ChevronLeft size={18} />
                         </button>
                       )}
                       <div className="h-10 w-10 rounded-full border border-white/10 bg-white/10 overflow-hidden shrink-0">

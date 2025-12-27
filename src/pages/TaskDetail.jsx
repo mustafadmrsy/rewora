@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, CheckCircle, Clock, Loader2, MapPin } from 'lucide-react'
+import { ChevronLeft, CheckCircle, Clock, Loader2, MapPin } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Card from '../components/Card'
 import { Button, GoldBadge, IconButton } from '../components/ui'
@@ -114,7 +114,7 @@ export default function TaskDetail() {
       {loading ? null : null}
       <div className="flex items-center gap-3">
         <IconButton isBack onClick={() => navigate(-1)} type="button" aria-label="Geri">
-          <ArrowLeft size={18} />
+          <ChevronLeft size={18} />
         </IconButton>
         <div className="flex-1 text-center text-lg font-semibold tracking-tight text-white">
           {mission?.category_title ?? ''}

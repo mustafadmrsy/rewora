@@ -20,6 +20,7 @@ export default function Header({ title = 'Rewora' }) {
   const onHome = location.pathname === '/'
   const onTasks = location.pathname === '/gorevler'
   const onRewards = location.pathname === '/oduller'
+  const onRewardDetail = location.pathname.startsWith('/oduller/')
   const onMessages = location.pathname === '/mesajlar'
   const onProfile = location.pathname === '/profil' || location.pathname.startsWith('/profil/')
   const onNotifications = location.pathname === '/bildirimler'
@@ -130,6 +131,15 @@ export default function Header({ title = 'Rewora' }) {
                 </div>
               </div>
             </div>
+          ) : onRewardDetail ? (
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="inline-flex items-center justify-center text-white/80 transition hover:text-white"
+              aria-label="Geri"
+            >
+              <ChevronLeft size={20} />
+            </button>
           ) : (onTasks || onRewards) && fullName ? (
             <div className="min-w-0">
               <div className="text-lg font-semibold leading-none tracking-tight text-white">
