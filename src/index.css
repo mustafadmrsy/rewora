@@ -52,6 +52,21 @@ body::-webkit-scrollbar {
   height: 0;
 }
 
+/* Prevent auto-zoom on iOS when focusing inputs */
+input,
+textarea,
+select {
+  font-size: 16px !important;
+}
+
+@media screen and (min-width: 768px) {
+  input,
+  textarea,
+  select {
+    font-size: inherit;
+  }
+}
+
 .rewora-scroll {
   scrollbar-width: none;
   -ms-overflow-style: none;

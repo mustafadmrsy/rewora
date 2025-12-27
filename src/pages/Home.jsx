@@ -7,6 +7,7 @@ import FeedCard from './home/components/FeedCard'
 import RightColumn from './home/components/RightColumn'
 import { listPosts, toggleLike } from '../lib/postsApi'
 import { listUserMissions } from '../lib/missionsApi'
+import { updateUser } from '../lib/authStorage'
 
 function ActiveTaskCard({ task, onContinue }) {
   return (
@@ -49,7 +50,7 @@ export default function Home() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const q = (params.get('q') ?? '').trim().toLowerCase()
-  const cat = params.get('cat') ?? '#tümü'
+  const cat = params.get('cat') ?? ''
   const [loading, setLoading] = useState(true)
   const [posts, setPosts] = useState([])
   const [activeTask, setActiveTask] = useState(null)
@@ -74,6 +75,16 @@ export default function Home() {
           })
           return map
         })
+
+        // Send categories to Header via custom event
+        if (res.categories) {
+          window.dispatchEvent(new CustomEvent('categoriesLoaded', { detail: { categories: res.categories } }))
+        }
+
+        // Update user session with latest data from API
+        if (res.user) {
+          updateUser(res.user)
+        }
       } catch {
         if (cancelled) return
         setPosts([])
@@ -153,7 +164,7 @@ export default function Home() {
 
   const filteredPosts = useMemo(() => {
     return posts.filter((p) => {
-      const matchesCat = cat === '#tümü' || p.category === cat
+      const matchesCat = !cat || cat === '' || p.category_slug === cat
       if (!matchesCat) return false
       if (!q) return true
       const hay = `${p.handle} ${p.subtitle} ${p.category}`.toLowerCase()
@@ -210,7 +221,7 @@ export default function Home() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-[1480px] space-y-6">
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">

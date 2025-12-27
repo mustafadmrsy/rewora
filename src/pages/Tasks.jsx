@@ -293,8 +293,8 @@ export default function Tasks() {
   }, [rewardTotalPages])
 
   return (
-    <div className="space-y-10">
-      <section className="space-y-4">
+    <div className="mx-auto w-full max-w-[1480px] space-y-6 mt-3">
+      <section className="space-y-6">
         <div className="flex items-center justify-between gap-4">
           <div className="text-2xl font-semibold tracking-tight text-white">Devam Edenler</div>
 

@@ -47,9 +47,18 @@ export default function Profile() {
         setMenuOpen(false)
       }
     }
+    function onProfileMenuOpen() {
+      if (isOwn) {
+        setMenuOpen(true)
+      }
+    }
     window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [])
+    window.addEventListener('profileMenuOpen', onProfileMenuOpen)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('profileMenuOpen', onProfileMenuOpen)
+    }
+  }, [isOwn])
 
   useEffect(() => {
     let cancelled = false
@@ -167,7 +176,7 @@ export default function Profile() {
         <div className="relative flex items-center justify-center py-2">
           <div className="text-xl font-semibold tracking-tight text-white">Profil</div>
         </div>
-        <div className="mt-5 flex items-center gap-4">
+        <div className="flex items-center gap-4">
           <div className="h-[92px] w-[92px] rounded-full border-2 border-[color:var(--gold)] bg-white/8 animate-pulse" />
           <div className="flex-1 space-y-2">
             <div className="h-4 w-32 bg-white/10 rounded animate-pulse" />
@@ -206,32 +215,8 @@ export default function Profile() {
   const photoUrl = resolvePostImageUrl(profile.photo)
 
   return (
-    <div className="mx-auto w-full max-w-[520px] lg:max-w-[920px]">
-      <div className="relative flex items-center justify-center py-2">
-        {!isOwn && (
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="absolute left-0 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/6 text-white/80 hover:bg-white/10"
-            aria-label="Geri"
-          >
-            <ArrowLeft size={20} />
-          </button>
-        )}
-        <div className="text-xl font-semibold tracking-tight text-white">Profil</div>
-        {isOwn && (
-          <button
-            type="button"
-            className="absolute right-0 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/6 text-white/80 hover:bg-white/10"
-            aria-label="Menü"
-            onClick={() => setMenuOpen(true)}
-          >
-            <Menu size={20} />
-          </button>
-        )}
-      </div>
-
-      <div className="mt-5 flex items-center gap-4">
+    <div className="mx-auto w-full max-w-[1480px] space-y-6">
+      <div className="flex items-center gap-4">
         <div className="relative shrink-0">
           <div className="h-[92px] w-[92px] rounded-full border-2 border-[color:var(--gold)] bg-white/8 overflow-hidden">
             {photoUrl ? (
@@ -271,7 +256,7 @@ export default function Profile() {
         </div>
       </div>
 
-      <div className="mt-4">
+      <div>
         <div className="text-lg font-semibold text-white">{fullName}</div>
         {isOwn && (
           <GoldBadge className="mt-2 w-fit">
@@ -282,7 +267,7 @@ export default function Profile() {
       </div>
 
       {posts.length > 0 ? (
-        <div className="mt-7">
+        <div>
           <div className="grid grid-cols-3 gap-[6px]">
             {posts.map((post) => (
               <button
@@ -308,7 +293,7 @@ export default function Profile() {
           </div>
         </div>
       ) : (
-        <div className="mt-14 flex flex-col items-center justify-center text-center">
+        <div className="flex flex-col items-center justify-center text-center py-12">
           <div className="relative">
             <div className="h-20 w-20 rounded-full border border-white/10 bg-white/6" />
             <div className="absolute inset-0 grid place-items-center text-white/55">

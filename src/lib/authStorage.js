@@ -33,6 +33,26 @@ export function getUser() {
   }
 }
 
+/**
+ * Updates the user information in the session
+ * Merges new user data with existing user data
+ * @param {Object} userData - New user data to update (e.g., { coin: 5500, fname: "Mehmet" })
+ */
+export function updateUser(userData) {
+  if (!userData || typeof userData !== 'object') return
+  
+  const currentUser = getUser()
+  if (!currentUser) return
+  
+  // Merge new data with existing user data
+  const updatedUser = { ...currentUser, ...userData }
+  
+  // Update session
+  localStorage.setItem(USER_KEY, JSON.stringify(updatedUser))
+  
+  return updatedUser
+}
+
 function uuid() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()

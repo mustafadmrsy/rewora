@@ -1,6 +1,6 @@
-import React from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { Gift, Home, ListTodo, MessageCircle, User } from 'lucide-react'
+import {Home, Award, Send, User, CheckCircle, Users} from 'lucide-react'
 import Header from './Header'
 import Sidebar from './Sidebar'
 import { cn } from './ui'
@@ -16,9 +16,27 @@ const titleByPath = {
 export default function AppShell() {
   const location = useLocation()
   const title = titleByPath[location.pathname] ?? 'Rewora'
-  
-  // Hide header on messages and profile pages
-  const hideHeader = location.pathname === '/mesajlar' || location.pathname === '/profil' || location.pathname.startsWith('/profil/')
+
+  // Hide header only on post detail pages
+  const hideHeader = location.pathname.startsWith('/post/')
+
+  // Global toast for rate limiting
+  const [rateLimitToast, setRateLimitToast] = useState(null)
+  const rateLimitToastTimer = useRef(null)
+
+  useEffect(() => {
+    function handleRateLimit(event) {
+      setRateLimitToast({ message: event.detail.message })
+      if (rateLimitToastTimer.current) clearTimeout(rateLimitToastTimer.current)
+      rateLimitToastTimer.current = setTimeout(() => setRateLimitToast(null), 3000)
+    }
+
+    window.addEventListener('apiRateLimit', handleRateLimit)
+    return () => {
+      window.removeEventListener('apiRateLimit', handleRateLimit)
+      if (rateLimitToastTimer.current) clearTimeout(rateLimitToastTimer.current)
+    }
+  }, [])
 
   return (
     <div className="min-h-screen">
@@ -27,7 +45,7 @@ export default function AppShell() {
       <div className="pl-0 lg:pl-[92px]">
         {!hideHeader && <Header title={title} gold={5800} />}
 
-        <main className="mx-auto max-w-[1480px] px-4 sm:px-6 py-6 pb-[calc(96px+env(safe-area-inset-bottom))] lg:pb-6 w-full overflow-x-hidden">
+        <main className="mx-auto max-w-[1480px] px-4 sm:px-6 pb-6 pb-[calc(96px+env(safe-area-inset-bottom))] lg:pb-6 w-full overflow-x-hidden">
           <div className="w-full overflow-x-hidden">
             <Outlet />
           </div>
@@ -38,9 +56,9 @@ export default function AppShell() {
         <div className="mx-auto flex max-w-[1480px] items-center justify-around px-3 pt-2 pb-[calc(10px+env(safe-area-inset-bottom))]">
           {[
             { to: '/', icon: Home, label: 'Anasayfa' },
-            { to: '/gorevler', icon: ListTodo, label: 'Görevler' },
-            { to: '/oduller', icon: Gift, label: 'Ödüller' },
-            { to: '/mesajlar', icon: MessageCircle, label: 'Mesajlar' },
+            { to: '/oduller', icon: Award, label: 'Ödüller' },
+            { to: '/gorevler', icon: Users, label: 'Görevler' },
+            { to: '/mesajlar', icon: Send, label: 'Mesajlar' },
             { to: '/profil', icon: User, label: 'Profil' },
           ].map((item) => {
             const Icon = item.icon
@@ -64,6 +82,29 @@ export default function AppShell() {
           })}
         </div>
       </nav>
+
+      {/* Global rate limit toast */}
+      {rateLimitToast ? (
+        <div className="fixed left-1/2 top-6 z-[100] w-[92%] max-w-[460px] -translate-x-1/2 rounded-[20px] border border-orange-500/30 bg-black/90 px-5 py-4 text-white shadow-[0_18px_50px_rgba(0,0,0,0.55)] backdrop-blur">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 text-orange-400">
+              <CheckCircle size={22} />
+            </div>
+            <div className="min-w-0 space-y-1">
+              <div className="text-sm font-semibold text-orange-400">Yavaş Ol!</div>
+              <div className="text-sm leading-relaxed text-white/85">{rateLimitToast.message}</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRateLimitToast(null)}
+              className="ml-auto text-white/60 transition hover:text-white"
+              aria-label="Kapat"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

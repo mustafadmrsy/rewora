@@ -35,6 +35,15 @@ export async function apiRequest(path, { method = 'GET', headers, body } = {}) {
   const data = await parseJsonSafely(res)
 
   if (!res.ok) {
+    // Handle 429 (Too Many Requests) - Rate limiting
+    if (res.status === 429) {
+      // Dispatch custom event for global toast notification
+      const event = new CustomEvent('apiRateLimit', {
+        detail: { message: 'Çok hızlısın, biraz yavaş ol!' }
+      })
+      window.dispatchEvent(event)
+    }
+    
     const err = new Error('API_ERROR')
     err.status = res.status
     err.data = data

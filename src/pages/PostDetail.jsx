@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, CheckCircle, Flag, Heart, MessageCircle, Send, MoreVertical, UserX } from 'lucide-react'
+import { ArrowLeft, CheckCircle, Flag, Heart, MessageCircle, Send, MoreVertical, UserX, Trash2 } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Card from '../components/Card'
 import { Button, cn, GoldBadge, IconButton } from '../components/ui'
-import { addReview, formatRelativeDate, getPost, listReviews, reportPost, resolvePostImageUrl, toggleLike } from '../lib/postsApi'
+import { addReview, formatRelativeDate, getPost, listReviews, reportPost, resolvePostImageUrl, toggleLike, deletePost } from '../lib/postsApi'
+import { getUser } from '../lib/authStorage'
 
 export default function PostDetail() {
   const navigate = useNavigate()
@@ -25,6 +26,11 @@ export default function PostDetail() {
   const [comment, setComment] = useState('')
   const [imageError, setImageError] = useState(false)
   const [avatarError, setAvatarError] = useState(false)
+
+  const currentUser = getUser()
+  const isOwnPost = useMemo(() => {
+    return currentUser?.id && post?.user_id && currentUser.id === post.user_id
+  }, [currentUser?.id, post?.user_id])
 
   function CommentAvatar({ url }) {
     const [error, setError] = useState(false)
@@ -161,22 +167,24 @@ export default function PostDetail() {
   return (
     <>
       <div className="mx-auto max-w-6xl space-y-6">
-        <div className="flex items-center justify-between">
+        {/* Header - geri butonu ve altın */}
+        <div className="flex items-center justify-between py-2">
+          <button
+            onClick={() => navigate(-1)}
+            type="button"
+            className="inline-flex items-center justify-center text-white/80 transition hover:text-white"
+            aria-label="Geri"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          
           <div className="flex items-center gap-2">
-            <IconButton onClick={() => navigate(-1)} type="button" aria-label="Geri">
-              <ArrowLeft size={18} />
-            </IconButton>
-            <div className="min-w-0">
-              <div className="truncate text-sm font-semibold text-white">{post?.handle ?? ''}</div>
-              <div className="truncate text-xs text-white/45">{post?.subtitle ?? ''}</div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <GoldBadge className="px-3 py-1">
-              <span className="text-xs font-semibold">{post?.gold ?? 0}</span>
-              <span className="text-xs font-semibold">altın</span>
-            </GoldBadge>
+            {post?.gold ? (
+              <GoldBadge className="justify-center">
+                <span className="text-xs font-semibold">{post.gold}</span>
+                <span className="text-xs font-semibold">altın</span>
+              </GoldBadge>
+            ) : null}
             <IconButton
               type="button"
               aria-label="Diğer"
@@ -244,93 +252,93 @@ export default function PostDetail() {
                 </IconButton>
               </div>
 
-            <div className="px-5 pt-4 pb-3 border-b border-white/10">
-              {post?.caption ? (
-                <div className="text-sm text-white/80 leading-relaxed">
-                  <span className="font-semibold text-white">{post?.handle ?? ''}</span>{' '}
-                  <span className="text-white/75">{post?.caption ?? ''}</span>
-                </div>
-              ) : (
-                <div className="text-sm text-white/60">Bu gönderi için açıklama eklenmemiş.</div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between px-5 py-3">
-              <div className="flex items-center gap-3">
-                <button
-                  className={cn(
-                    'inline-flex items-center gap-2 text-sm text-white/70 transition hover:text-white',
-                    liked ? 'text-[color:var(--gold)]' : '',
-                  )}
-                  onClick={async () => {
-                    const prevLiked = liked
-                    setLiked((v) => !v)
-                    setLikes((n) => Math.max(0, n + (prevLiked ? -1 : 1)))
-                    try {
-                      await toggleLike(id)
-                    } catch {
-                      setLiked(prevLiked)
-                      setLikes((n) => Math.max(0, n + (prevLiked ? 1 : -1)))
-                      showToast('Hata', 'Beğeni güncellenemedi.')
-                    }
-                  }}
-                  type="button"
-                >
-                  <Heart size={18} className={liked ? 'text-[color:var(--gold)]' : 'text-white/70'} />
-                  <span>{likes}</span>
-                </button>
-
-                <div className="inline-flex items-center gap-2 text-sm text-white/70">
-                  <MessageCircle size={18} className="text-white/70" />
-                  <span>{post?.comments ?? 0}</span>
-                </div>
-              </div>
-
-              <div className="text-xs text-white/45">{post?.time ?? ''}</div>
-            </div>
-
-            <div className="flex-1 overflow-auto px-5 pb-4 rewora-scroll">
-              <div className="space-y-4">
-                {loading ? (
-                  <div className="text-sm text-white/55">Yükleniyor...</div>
+              <div className="px-5 pt-4 pb-3 border-b border-white/10">
+                {post?.caption ? (
+                  <div className="text-sm text-white/80 leading-relaxed">
+                    <span className="font-semibold text-white">{post?.handle ?? ''}</span>{' '}
+                    <span className="text-white/75">{post?.caption ?? ''}</span>
+                  </div>
                 ) : (
-                  comments.map((c) => renderComment(c))
+                  <div className="text-sm text-white/60">Bu gönderi için açıklama eklenmemiş.</div>
                 )}
               </div>
-            </div>
 
-            <div className="border-t border-white/10 px-5 py-4">
-              <div className="flex items-center gap-2">
-                <div className="h-9 w-9 overflow-hidden rounded-full border border-white/10 bg-white/8">
-                  <div className="h-full w-full bg-gradient-to-br from-white/15 to-white/0" />
+              <div className="flex items-center justify-between px-5 py-3">
+                <div className="flex items-center gap-3">
+                  <button
+                    className={cn(
+                      'inline-flex items-center gap-2 text-sm text-white/70 transition hover:text-white',
+                      liked ? 'text-[color:var(--gold)]' : '',
+                    )}
+                    onClick={async () => {
+                      const prevLiked = liked
+                      setLiked((v) => !v)
+                      setLikes((n) => Math.max(0, n + (prevLiked ? -1 : 1)))
+                      try {
+                        await toggleLike(id)
+                      } catch {
+                        setLiked(prevLiked)
+                        setLikes((n) => Math.max(0, n + (prevLiked ? 1 : -1)))
+                        showToast('Hata', 'Beğeni güncellenemedi.')
+                      }
+                    }}
+                    type="button"
+                  >
+                    <Heart size={18} className={liked ? 'text-[color:var(--gold)]' : 'text-white/70'} />
+                    <span>{likes}</span>
+                  </button>
+
+                  <div className="inline-flex items-center gap-2 text-sm text-white/70">
+                    <MessageCircle size={18} className="text-white/70" />
+                    <span>{post?.comments ?? 0}</span>
+                  </div>
                 </div>
-                <input
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key !== 'Enter') return
-                    if (e.shiftKey) return
-                    e.preventDefault()
-                    submitComment()
-                  }}
-                  placeholder="Yorum yaz..."
-                  className="h-11 flex-1 rounded-full border border-white/12 bg-white/6 px-4 text-sm text-white placeholder:text-white/35 outline-none transition focus:border-[color:var(--gold)]/40"
-                />
-                <Button
-                  variant="secondary"
-                  type="button"
-                  onClick={submitComment}
-                  className="px-4"
-                  disabled={!comment.trim()}
-                  aria-label="Gönder"
-                >
-                  <Send size={16} />
-                </Button>
+
+                <div className="text-xs text-white/45">{post?.time ?? ''}</div>
+              </div>
+
+              <div className="flex-1 overflow-auto px-5 pb-4 rewora-scroll">
+                <div className="space-y-4">
+                  {loading ? (
+                    <div className="text-sm text-white/55">Yükleniyor...</div>
+                  ) : (
+                    comments.map((c) => renderComment(c))
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t border-white/10 px-5 py-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-9 w-9 overflow-hidden rounded-full border border-white/10 bg-white/8">
+                    <div className="h-full w-full bg-gradient-to-br from-white/15 to-white/0" />
+                  </div>
+                  <input
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter') return
+                      if (e.shiftKey) return
+                      e.preventDefault()
+                      submitComment()
+                    }}
+                    placeholder="Yorum yaz..."
+                    className="h-11 flex-1 rounded-full border border-white/12 bg-white/6 px-4 text-sm text-white placeholder:text-white/35 outline-none transition focus:border-[color:var(--gold)]/40"
+                  />
+                  <Button
+                    variant="secondary"
+                    type="button"
+                    onClick={submitComment}
+                    className="px-4"
+                    disabled={!comment.trim()}
+                    aria-label="Gönder"
+                  >
+                    <Send size={16} />
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        </Card>
-      </div>
+          </Card>
+        </div>
 
       </div>
 
@@ -346,28 +354,52 @@ export default function PostDetail() {
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
-            <button
-              type="button"
-              className="w-full px-4 py-3 text-left text-sm font-semibold text-red-200 hover:bg-red-500/10 transition flex items-center gap-3"
-              onClick={() => {
-                setMenuOpen(false)
-                showToast('Başarılı', 'Kullanıcı engellendi.')
-              }}
-            >
-              <UserX size={16} className="text-red-200" />
-              Kullanıcıyı engelle
-            </button>
-            <button
-              type="button"
-              className="w-full px-4 py-3 text-left text-sm font-semibold text-red-200 hover:bg-red-500/10 transition flex items-center gap-3"
-              onClick={() => {
-                setMenuOpen(false)
-                setReportOpen(true)
-              }}
-            >
-              <Flag size={16} className="text-red-200" />
-              Gönderiyi şikayet et
-            </button>
+            {isOwnPost ? (
+              <button
+                type="button"
+                className="w-full px-4 py-3 text-left text-sm font-semibold text-red-200 hover:bg-red-500/10 transition flex items-center gap-3"
+                onClick={async () => {
+                  setMenuOpen(false)
+                  try {
+                    await deletePost(id)
+                    showToast('Başarılı', 'Gönderi silindi.')
+                    setTimeout(() => {
+                      navigate(-1)
+                    }, 1000)
+                  } catch {
+                    showToast('Hata', 'Gönderi silinemedi.')
+                  }
+                }}
+              >
+                <Trash2 size={16} className="text-red-200" />
+                Sil
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="w-full px-4 py-3 text-left text-sm font-semibold text-red-200 hover:bg-red-500/10 transition flex items-center gap-3"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    showToast('Başarılı', 'Kullanıcı engellendi.')
+                  }}
+                >
+                  <UserX size={16} className="text-red-200" />
+                  Kullanıcıyı engelle
+                </button>
+                <button
+                  type="button"
+                  className="w-full px-4 py-3 text-left text-sm font-semibold text-red-200 hover:bg-red-500/10 transition flex items-center gap-3"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    setReportOpen(true)
+                  }}
+                >
+                  <Flag size={16} className="text-red-200" />
+                  Gönderiyi şikayet et
+                </button>
+              </>
+            )}
           </div>
         </div>
       ) : null}

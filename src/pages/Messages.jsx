@@ -1,132 +1,21 @@
-import React, { useEffect, useMemo, useState, useRef } from 'react'
-import { ChevronLeft, ChevronRight, Search, Send, MoreVertical, ArrowLeft } from 'lucide-react'
-import Card from '../components/Card'
+import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react'
+import { Search, Send, MoreVertical, ArrowLeft, X } from 'lucide-react'
 import { Button } from '../components/ui'
 import { getEcho } from '../lib/echo'
 import { listConversations, listMessages, sendMessage, resolvePostImageUrl, mapMessage } from '../lib/messagesApi'
 import { getUser } from '../lib/authStorage'
 import { formatRelativeDate } from '../lib/postsApi'
 
-const chats = [
-  {
-    id: 1,
-    name: 'Zeynep',
-    last: 'Yeni paylaşımını beğendim!',
-    time: '2 dk önce',
-    unread: 2,
-  },
-  {
-    id: 2,
-    name: 'Berk',
-    last: 'Görev ekranına bakıyorum.',
-    time: '15 dk önce',
-    unread: 0,
-  },
-  {
-    id: 3,
-    name: 'Rewora Destek',
-    last: 'Ödül talebin alındı.',
-    time: '1s',
-    unread: 1,
-  },
-  {
-    id: 4,
-    name: 'Merve',
-    last: 'Sinemaya gidiyoruz, gelmek ister misin?',
-    time: 'Dün',
-    unread: 0,
-  },
-  {
-    id: 5,
-    name: 'Ahmet',
-    last: 'Ödül detayına bakınca haber ver.',
-    time: '2 gün',
-    unread: 0,
-  },
-  {
-    id: 6,
-    name: 'Ece',
-    last: 'Bugün kısa bir görev var mı?',
-    time: '2 gün',
-    unread: 3,
-  },
-  {
-    id: 7,
-    name: 'Deniz',
-    last: 'İstersen birlikte planlayalım.',
-    time: '3 gün',
-    unread: 0,
-  },
-  {
-    id: 8,
-    name: 'Can',
-    last: 'Görev önerin çok iyiydi.',
-    time: '4 gün',
-    unread: 0,
-  },
-  {
-    id: 9,
-    name: 'Elif',
-    last: 'Akşama konuşuruz 👋',
-    time: '1 hf',
-    unread: 1,
-  },
-  {
-    id: 10,
-    name: 'Kaan',
-    last: 'Yeni ödüller gelmiş, baktın mı?',
-    time: '1 hf',
-    unread: 0,
-  },
-  {
-    id: 11,
-    name: 'Seda',
-    last: 'Ben de o görevi seçtim.',
-    time: '2 hf',
-    unread: 0,
-  },
-  {
-    id: 12,
-    name: 'Mert',
-    last: 'İstersen birlikte gidelim.',
-    time: '2 hf',
-    unread: 0,
-  },
-  {
-    id: 13,
-    name: 'Ayşe',
-    last: 'Tamamdır, teşekkürler!',
-    time: '3 hf',
-    unread: 0,
-  },
-  {
-    id: 14,
-    name: 'Emir',
-    last: 'Bunu hızlıca hallederiz.',
-    time: '1 ay',
-    unread: 0,
-  },
-  {
-    id: 15,
-    name: 'Selin',
-    last: 'Yarın uygun musun?',
-    time: '1 ay',
-    unread: 2,
-  },
-]
-
-const messagesMock = [
-  { id: 1, from: 'other', text: 'Selam! Görevi tamamladın mı?', time: '10:24' },
-  { id: 2, from: 'me', text: 'Evet, şimdi onaya gönderdim.', time: '10:25' },
-  { id: 3, from: 'other', text: 'Süper, ödül güncellenince haber veririm.', time: '10:26' },
-]
 
 export default function Messages() {
   const [search, setSearch] = useState('')
+  const [showSearch, setShowSearch] = useState(false)
   const [selected, setSelected] = useState(null)
   const [isMobile, setIsMobile] = useState(false)
   const [showThread, setShowThread] = useState(false)
-  const [page, setPage] = useState(1)
+  const [conversationsPage, setConversationsPage] = useState(1)
+  const [hasMoreConversations, setHasMoreConversations] = useState(true)
+  const [loadingMoreConversations, setLoadingMoreConversations] = useState(false)
   const [conversations, setConversations] = useState([])
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(true)
@@ -137,6 +26,7 @@ export default function Messages() {
   const [hasMoreMessages, setHasMoreMessages] = useState(false)
   const messagesEndRef = useRef(null)
   const messagesContainerRef = useRef(null)
+  const conversationsContainerRef = useRef(null)
   const scrollPositionRef = useRef({ height: 0, top: 0 })
   const currentUser = getUser()
   const currentUserId = currentUser?.id
@@ -148,13 +38,16 @@ export default function Messages() {
     async function load() {
       setLoading(true)
       try {
-        const res = await listConversations()
+        const res = await listConversations(1)
         if (cancelled) return
         setConversations(res.conversations ?? [])
+        setConversationsPage(1)
+        setHasMoreConversations(res.pagination?.next_page_url ? true : false)
         // Don't auto-select first conversation
       } catch {
         if (cancelled) return
         setConversations([])
+        setHasMoreConversations(false)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -165,6 +58,56 @@ export default function Messages() {
       cancelled = true
     }
   }, [])
+
+  // Load more conversations on scroll
+  const loadMoreConversations = useCallback(async () => {
+    if (loadingMoreConversations || !hasMoreConversations) return
+
+    setLoadingMoreConversations(true)
+    try {
+      const nextPage = conversationsPage + 1
+      const res = await listConversations(nextPage)
+      
+      if (res.conversations && res.conversations.length > 0) {
+        setConversations((prev) => {
+          const existingIds = new Set(prev.map(c => c.id))
+          const newConversations = res.conversations.filter(c => c.id && !existingIds.has(c.id))
+          return [...prev, ...newConversations]
+        })
+        setConversationsPage(nextPage)
+        setHasMoreConversations(res.pagination?.next_page_url ? true : false)
+      } else {
+        setHasMoreConversations(false)
+      }
+    } catch (err) {
+      console.error('Error loading more conversations:', err)
+      setHasMoreConversations(false)
+    } finally {
+      setLoadingMoreConversations(false)
+    }
+  }, [conversationsPage, loadingMoreConversations, hasMoreConversations])
+
+  // Handle scroll for conversations infinite loading
+  useEffect(() => {
+    const container = conversationsContainerRef.current
+    if (!container) return
+
+    function handleScroll() {
+      // Load more when scrolled near bottom (within 300px)
+      const scrollTop = container.scrollTop
+      const scrollHeight = container.scrollHeight
+      const clientHeight = container.clientHeight
+      
+      if (scrollHeight - scrollTop - clientHeight < 300 && hasMoreConversations && !loadingMoreConversations) {
+        loadMoreConversations()
+      }
+    }
+
+    container.addEventListener('scroll', handleScroll)
+    return () => {
+      container.removeEventListener('scroll', handleScroll)
+    }
+  }, [hasMoreConversations, loadingMoreConversations, loadMoreConversations])
 
   // Load messages for selected conversation - only when conversation is clicked
   useEffect(() => {
@@ -371,14 +314,21 @@ export default function Messages() {
     function sync() {
       setIsMobile(window.innerWidth < 1024)
     }
+    function onMessagesSearchToggle() {
+      setShowSearch(!showSearch)
+      if (showSearch) {
+        setSearch('')
+      }
+    }
     sync()
     window.addEventListener('resize', sync)
-    return () => window.removeEventListener('resize', sync)
-  }, [])
+    window.addEventListener('messagesSearchToggle', onMessagesSearchToggle)
+    return () => {
+      window.removeEventListener('resize', sync)
+      window.removeEventListener('messagesSearchToggle', onMessagesSearchToggle)
+    }
+  }, [showSearch])
 
-  useEffect(() => {
-    setPage(1)
-  }, [search])
   const filteredChats = useMemo(() => {
     const q = search.trim().toLowerCase()
     const list = conversations
@@ -389,18 +339,6 @@ export default function Messages() {
     })
   }, [conversations, search])
 
-  const pageSize = 5
-  const pageCount = Math.max(1, Math.ceil(filteredChats.length / pageSize))
-  const safePage = Math.min(page, pageCount)
-
-  useEffect(() => {
-    if (safePage !== page) setPage(safePage)
-  }, [page, safePage])
-
-  const pagedChats = useMemo(() => {
-    const start = (safePage - 1) * pageSize
-    return filteredChats.slice(start, start + pageSize)
-  }, [filteredChats, pageSize, safePage])
 
   const selectedChat = conversations.find((c) => c.id === selected) ?? null
 
@@ -423,31 +361,34 @@ export default function Messages() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div>
-          <div className="text-2xl font-semibold tracking-tight text-white">Mesajlar</div>
-          <div className="text-sm text-white/55">Arkadaşların ve destek ile mesajlaş.</div>
-        </div>
-      </div>
-
-      <div className={`grid grid-cols-1 gap-4 ${isMobile ? '' : 'lg:grid-cols-3'}`}>
+    <div className="mx-auto w-full max-w-[1480px] space-y-6">
+        <div className={`grid grid-cols-1 gap-4 ${isMobile ? '' : 'lg:grid-cols-3'}`}>
         {/* Sohbet listesi */}
         {!isMobile || !showThread ? (
-        <Card className={`${isMobile ? '' : 'lg:col-span-1'}`}>
-          <div className="p-3 space-y-3">
-            <div className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/45" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="h-10 w-full rounded-full border border-white/12 bg-white/6 pl-9 pr-3 text-sm text-white placeholder:text-white/40 outline-none transition focus:border-[color:var(--gold)]/40"
-                placeholder="Ara"
-              />
+        <div className={`${isMobile ? '' : 'lg:col-span-1'}`}>
+          <div className="px-1 pt-3 pb-3 space-y-3">
+            {/* Arama kutusu - animasyonlu */}
+            <div
+              className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                showSearch ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'
+              }`}
+            >
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/45" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-10 w-full rounded-full border border-white/12 bg-white/6 pl-9 pr-3 text-sm text-white placeholder:text-white/40 outline-none transition focus:border-[color:var(--gold)]/40"
+                  placeholder="Kullanıcı adı ara..."
+                  autoFocus={showSearch}
+                />
+              </div>
             </div>
-
-            <div className="space-y-2 min-h-[48vh] max-h-[56vh] overflow-y-auto rewora-scroll pr-1">
-              {pagedChats.map((c) => (
+            <div 
+              ref={conversationsContainerRef}
+              className="space-y-2 min-h-[48vh] max-h-[56vh] overflow-y-auto rewora-scroll"
+            >
+              {filteredChats.map((c) => (
                 <button
                   key={c.id}
                   type="button"
@@ -457,8 +398,8 @@ export default function Messages() {
                     // Clear messages first to ensure clean load
                     setMessages([])
                   }}
-                  className={`group flex w-full items-center justify-between gap-3 rounded-[14px] border border-white/10 px-3 py-3 text-left transition ${
-                    selected === c.id ? 'bg-white/10 border-white/16' : 'bg-white/4 hover:bg-white/8'
+                  className={`group flex w-full items-center justify-between gap-3 px-0 py-2.5 text-left transition border-b border-white/10 ${
+                    selected === c.id ? 'bg-white/8' : 'hover:bg-white/8'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -475,7 +416,7 @@ export default function Messages() {
                       )}
                     </div>
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-white">{c.other_user?.name ?? 'Kullanıcı'}</div>
+                      <div className="truncate text-sm font-semibold text-white mb-1">{c.other_user?.name ?? 'Kullanıcı'}</div>
                       <div className="truncate text-xs text-white/60">{c.last_message?.text ?? ''}</div>
                     </div>
                   </div>
@@ -489,38 +430,17 @@ export default function Messages() {
                   </div>
                 </button>
               ))}
-            </div>
-
-            <div className="flex items-center justify-between pt-1">
-              <button
-                type="button"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={safePage <= 1}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-white/6 text-white/80 hover:bg-white/10 disabled:opacity-40 disabled:pointer-events-none"
-                aria-label="Önceki sayfa"
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <div className="text-xs text-white/55">
-                {safePage} / {pageCount}
-              </div>
-              <button
-                type="button"
-                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-                disabled={safePage >= pageCount}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-white/6 text-white/80 hover:bg-white/10 disabled:opacity-40 disabled:pointer-events-none"
-                aria-label="Sonraki sayfa"
-              >
-                <ChevronRight size={18} />
-              </button>
+              {loadingMoreConversations && (
+                <div className="text-center text-xs text-white/50 py-2">Yükleniyor...</div>
+              )}
             </div>
           </div>
-        </Card>
+        </div>
         ) : null}
 
         {/* Sohbet penceresi */}
         {(!isMobile || showThread) && (
-          <Card className={`${isMobile ? '' : 'lg:col-span-2'} h-[70vh]`}>
+          <div className={`${isMobile ? '' : 'lg:col-span-2'} h-[70vh]`}>
             <div className="flex h-full flex-col">
               {selectedChat ? (
                 <>
@@ -644,9 +564,9 @@ export default function Messages() {
                 </div>
               )}
             </div>
-          </Card>
+          </div>
         )}
-      </div>
+        </div>
     </div>
   )
 }

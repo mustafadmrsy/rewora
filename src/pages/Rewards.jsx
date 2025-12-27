@@ -210,7 +210,7 @@ export default function Rewards() {
   }, [totalPages])
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-[1480px] space-y-6 mt-3">
       <div className="flex items-center justify-between">
         <div>
           <div className="text-2xl font-semibold tracking-tight text-white">

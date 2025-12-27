@@ -4,7 +4,7 @@ import {
   Home,
   ListTodo,
   Gift,
-  MessageCircle,
+  Send,
   User,
   Bell,
 } from 'lucide-react'
@@ -14,7 +14,7 @@ const nav = [
   { to: '/', label: 'Anasayfa', icon: Home },
   { to: '/gorevler', label: 'Görevler', icon: ListTodo },
   { to: '/oduller', label: 'Ödüller', icon: Gift },
-  { to: '/mesajlar', label: 'Mesajlar', icon: MessageCircle },
+  { to: '/mesajlar', label: 'Mesajlar', icon: Send },
   { to: '/profil', label: 'Profil', icon: User },
 ]
 

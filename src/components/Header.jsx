@@ -1,42 +1,54 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { Bell, Search, Home, ListTodo, Gift, MessageCircle, User, ChevronLeft, LucideCheckCircle2, CheckCheck } from 'lucide-react'
-import { Chip, GoldBadge, IconButton } from './ui'
+import { Bell, Search, Home, ListTodo, Gift, Send, User, ChevronLeft, CheckCheck, Menu, X } from 'lucide-react'
+import { Chip, GoldBadge } from './ui'
 import { clearSession, getUser } from '../lib/authStorage'
 import { resetEcho } from '../lib/echo'
-
-const chips = [
-  { label: '#tümü' },
-  { label: '#eğlence' },
-  { label: '#sağlık' },
-  { label: '#alışveriş' },
-  { label: '#finans' },
-]
 
 export default function Header({ title = 'Rewora' }) {
   const navigate = useNavigate()
   const location = useLocation()
   const [params] = useSearchParams()
-  const activeCat = params.get('cat') ?? '#tümü'
+  const activeCat = params.get('cat') ?? ''
   const qParam = params.get('q') ?? ''
 
   const [openNotif, setOpenNotif] = useState(false)
   const notifRef = useRef(null)
   const profileMenuRef = useRef(null)
   const [search, setSearch] = useState(qParam)
+  const [categories, setCategories] = useState([])
   const onHome = location.pathname === '/'
   const onTasks = location.pathname === '/gorevler'
   const onRewards = location.pathname === '/oduller'
+  const onMessages = location.pathname === '/mesajlar'
+  const onProfile = location.pathname === '/profil' || location.pathname.startsWith('/profil/')
   const onNotifications = location.pathname === '/bildirimler'
-  
+
   // Get coin and user info from session
   const currentUser = getUser()
   const gold = currentUser?.coin ?? 0
   const fullName = currentUser ? `${currentUser.fname || ''} ${currentUser.lname || ''}`.trim() : ''
 
+  // Check if viewing own profile
+  const profilePathMatch = location.pathname.match(/^\/profil\/(.+)$/)
+  const profileId = profilePathMatch ? profilePathMatch[1] : null
+  const isOwnProfile = onProfile && (!profileId || profileId === 'me' || String(profileId) === String(currentUser?.id))
+
   useEffect(() => {
     setSearch(qParam)
   }, [qParam, location.pathname])
+
+  // Listen for categories from Home page
+  useEffect(() => {
+    function handleCategoriesLoaded(event) {
+      setCategories(event.detail.categories ?? [])
+    }
+
+    window.addEventListener('categoriesLoaded', handleCategoriesLoaded)
+    return () => {
+      window.removeEventListener('categoriesLoaded', handleCategoriesLoaded)
+    }
+  }, [])
 
   useEffect(() => {
     function onDocClick(e) {
@@ -50,15 +62,6 @@ export default function Header({ title = 'Rewora' }) {
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [openNotif])
 
-  
-
-  const mobileNav = [
-    { to: '/', label: 'Anasayfa', icon: Home },
-    { to: '/gorevler', label: 'Görevler', icon: ListTodo },
-    { to: '/oduller', label: 'Ödüller', icon: Gift },
-    { to: '/mesajlar', label: 'Mesajlar', icon: MessageCircle },
-    { to: '/profil', label: 'Profil', icon: User },
-  ]
 
   function goHomeWithParams(next) {
     const nextParams = new URLSearchParams(params)
@@ -69,9 +72,20 @@ export default function Header({ title = 'Rewora' }) {
     navigate({ pathname: '/', search: nextParams.toString() ? `?${nextParams.toString()}` : '' })
   }
 
-  function onChipClick(label) {
-    goHomeWithParams({ cat: label === '#tümü' ? '' : label })
+  function onChipClick(category) {
+    goHomeWithParams({ cat: category.slug === '' ? '' : category.slug })
   }
+
+  // Build chips array: "Tümü" + categories from API
+  const chips = useMemo(() => {
+    const allChip = { label: '#tümü', slug: '', title: 'Tümü' }
+    const categoryChips = (categories ?? []).map((cat) => ({
+      label: `#${cat.title}`,
+      slug: cat.slug ?? '',
+      title: cat.title ?? '',
+    }))
+    return [allChip, ...categoryChips]
+  }, [categories])
 
   function onSearchSubmit() {
     const trimmed = search.trim()
@@ -79,7 +93,7 @@ export default function Header({ title = 'Rewora' }) {
   }
 
   return (
-    <header className="sticky top-0 z-30 border-b border-white/8 bg-black/20 backdrop-blur-xl">
+    <header className="sticky top-0 z-30">
       <div className="mx-auto flex max-w-[1480px] items-center gap-4 px-6 py-4">
         <div className="flex min-w-0 flex-1 items-center gap-4">
           {onHome ? (
@@ -105,10 +119,10 @@ export default function Header({ title = 'Rewora' }) {
               <button
                 type="button"
                 onClick={() => navigate('/')}
-                className="inline-flex items-center justify-center text-[color:var(--gold)] transition hover:text-[color:var(--gold)]/80 cursor-pointer z-10"
+                className="inline-flex h-10 w-10 items-center justify-center text-[color:var(--gold)] transition hover:text-[color:var(--gold)]/80 cursor-pointer z-10"
                 aria-label="Geri"
               >
-                <ChevronLeft size={24} />
+                <ChevronLeft size={20} />
               </button>
               <div className="flex-1 text-center absolute left-0 right-0 pointer-events-none">
                 <div className="text-lg font-semibold leading-none tracking-tight text-white">
@@ -120,6 +134,23 @@ export default function Header({ title = 'Rewora' }) {
             <div className="min-w-0">
               <div className="text-lg font-semibold leading-none tracking-tight text-white">
                 {fullName}
+              </div>
+            </div>
+          ) : onMessages ? (
+            <div className="flex min-w-0 flex-1 items-center relative">
+              <div className="flex-1 text-center absolute left-0 right-0 pointer-events-none">
+                <div className="text-lg font-semibold leading-none tracking-tight text-white">
+                  Mesajlar
+                </div>
+              </div>
+            </div>
+
+          ) : onProfile ? (
+            <div className="flex min-w-0 flex-1 items-center relative">
+              <div className="flex-1 text-center absolute left-0 right-0 pointer-events-none">
+                <div className="text-lg font-semibold leading-none tracking-tight text-white">
+                  Profil
+                </div>
               </div>
             </div>
           ) : null}
@@ -146,8 +177,8 @@ export default function Header({ title = 'Rewora' }) {
                 {chips.map((c) => (
                   <Chip
                     key={c.label}
-                    active={activeCat === c.label}
-                    onClick={() => onChipClick(c.label)}
+                    active={activeCat === c.slug}
+                    onClick={() => onChipClick(c)}
                     type="button"
                   >
                     {c.label}
@@ -168,34 +199,71 @@ export default function Header({ title = 'Rewora' }) {
                 const event = new CustomEvent('markAllRead')
                 window.dispatchEvent(event)
               }}
-              className="inline-flex items-center justify-center text-[color:var(--gold)] transition hover:text-[color:var(--gold)]/80 cursor-pointer w-6"
+              className="inline-flex h-10 w-10 items-center justify-center text-[color:var(--gold)] transition hover:text-[color:var(--gold)]/80 cursor-pointer"
             >
-              <CheckCheck size={20} />
+              <CheckCheck size={18} />
             </button>
           </div>
         ) : (
           <>
-            <div className="hidden items-center gap-3 lg:flex">
-              <GoldBadge className="justify-center">
-                <span className="text-xs font-semibold">{gold}</span>
-                <span className="text-xs font-semibold">altın</span>
-              </GoldBadge>
-            </div>
+            {!(onMessages || onProfile) && (
+              <>
+                <div className="hidden items-center gap-3 lg:flex">
+                  <GoldBadge className="justify-center">
+                    <span className="text-xs font-semibold">{gold}</span>
+                    <span className="text-xs font-semibold">altın</span>
+                  </GoldBadge>
+                </div>
 
-            <div className="flex items-center gap-3 lg:hidden">
-              <GoldBadge className="justify-center">
-                <span className="text-xs font-semibold">{gold}</span>
-                <span className="text-xs font-semibold">altın</span>
-              </GoldBadge>
-              <button
-                type="button"
-                aria-label="Bildirimler"
-                onClick={() => navigate('/bildirimler')}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/6 text-white/80 transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--gold)]/60 cursor-pointer"
-              >
-                <Bell size={18} />
-              </button>
-            </div>
+                <div className="flex items-center gap-3 lg:hidden">
+                  <GoldBadge className="justify-center">
+                    <span className="text-xs font-semibold">{gold}</span>
+                    <span className="text-xs font-semibold">altın</span>
+                  </GoldBadge>
+                  {onHome && (
+                    <button
+                      type="button"
+                      aria-label="Bildirimler"
+                      onClick={() => navigate('/bildirimler')}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/6 text-white/80 transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--gold)]/60 cursor-pointer"
+                    >
+                      <Bell size={18} />
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+            {onProfile && isOwnProfile && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  aria-label="Menü"
+                  onClick={() => {
+                    const event = new CustomEvent('profileMenuOpen')
+                    window.dispatchEvent(event)
+                  }}
+                  className="inline-flex h-6 w-6 items-center justify-center text-white/80 transition hover:text-white"
+                >
+                  <Menu size={18} />
+                </button>
+              </div>
+            )}
+            {onMessages && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  aria-label="Ara"
+                  onClick={() => {
+                    const event = new CustomEvent('messagesSearchToggle')
+                    window.dispatchEvent(event)
+                  }}
+                  className="inline-flex h-6 w-6 items-center justify-center text-white/80 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--gold)]/60 cursor-pointer"
+
+                >
+                  <Search size={18} />
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -221,9 +289,9 @@ export default function Header({ title = 'Rewora' }) {
             {chips.map((c) => (
               <Chip
                 key={c.label}
-                active={activeCat === c.label}
+                active={activeCat === c.slug}
                 className="shrink-0"
-                onClick={() => onChipClick(c.label)}
+                onClick={() => onChipClick(c)}
                 type="button"
               >
                 {c.label}
@@ -232,7 +300,7 @@ export default function Header({ title = 'Rewora' }) {
           </div>
         </div>
       ) : null}
-     
+
     </header>
   )
 }

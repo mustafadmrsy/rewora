@@ -199,6 +199,10 @@ export async function reportPost({ postId, reason, content }) {
   return api.post(`/post/report/${postId}`, { reason, content })
 }
 
+export async function deletePost(postId) {
+  return api.del(`/post/${postId}/delete`)
+}
+
 export async function getProfile(userId) {
   const res = await api.get(`/profile/${userId}`)
   // Response format: { success: true, message: "...", data: { profile: {...}, posts: [...], pagination: {...} } }

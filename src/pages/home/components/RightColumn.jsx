@@ -18,7 +18,7 @@ export default function RightColumn({
   onContinueTask,
 }) {
   return (
-    <div className="hidden space-y-6 lg:col-span-1 lg:sticky lg:top-24 lg:block lg:self-start">
+    <div className="hidden space-y-6 lg:col-span-1 lg:sticky lg:block lg:self-start">
       <Card>
         <div className="p-6">
           <div className="flex items-center justify-between">

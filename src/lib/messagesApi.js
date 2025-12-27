@@ -77,8 +77,10 @@ export function mapMessage(raw, currentUserId = null) {
   }
 }
 
-export async function listConversations() {
-  const res = await api.get('/conversation')
+export async function listConversations(page = 1) {
+  const res = await api.get('/conversation', {
+    params: { page },
+  })
   // Response format: { success: true, message: "...", data: { conversations: [...] } }
   const responseData = res?.data ?? {}
   
@@ -90,7 +92,18 @@ export async function listConversations() {
       : toArray(conversationsPayload)
 
   const conversations = list.map(mapConversation).filter(Boolean)
-  return { conversations, meta: conversationsPayload ?? null }
+  return { 
+    conversations, 
+    meta: conversationsPayload ?? null,
+    pagination: {
+      current_page: conversationsPayload?.current_page ?? page,
+      last_page: conversationsPayload?.last_page ?? 1,
+      per_page: conversationsPayload?.per_page ?? 36,
+      total: conversationsPayload?.total ?? 0,
+      next_page_url: conversationsPayload?.next_page_url ?? null,
+      prev_page_url: conversationsPayload?.prev_page_url ?? null,
+    },
+  }
 }
 
 export async function getConversation(conversationId) {

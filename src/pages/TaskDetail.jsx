@@ -113,7 +113,7 @@ export default function TaskDetail() {
     <div className="mx-auto max-w-[920px] space-y-6">
       {loading ? null : null}
       <div className="flex items-center gap-3">
-        <IconButton onClick={() => navigate(-1)} type="button" aria-label="Geri">
+        <IconButton isBack onClick={() => navigate(-1)} type="button" aria-label="Geri">
           <ArrowLeft size={18} />
         </IconButton>
         <div className="flex-1 text-center text-lg font-semibold tracking-tight text-white">

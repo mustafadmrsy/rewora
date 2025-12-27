@@ -38,11 +38,13 @@ export function Button({
   )
 }
 
-export function IconButton({ className, children, ...props }) {
+export function IconButton({ className, children, isBack = false, ...props }) {
   return (
     <button
       className={cn(
-        'inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/6 text-white/80 transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--gold)]/60',
+        isBack
+          ? 'inline-flex items-center justify-center text-white/80 transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--gold)]/60'
+          : 'inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/6 text-white/80 transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--gold)]/60',
         className,
       )}
       {...props}
