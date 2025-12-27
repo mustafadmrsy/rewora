@@ -84,8 +84,10 @@ export function mapNotification(raw) {
   }
 }
 
-export async function listNotifications() {
-  const res = await api.get('/notification')
+export async function listNotifications(page = 1) {
+  const res = await api.get('/notification', {
+    params: { page },
+  })
   const data = res?.data ?? {}
   const payload = data.notifications
 
@@ -97,7 +99,19 @@ export async function listNotifications() {
         : toArray(payload)
 
   const notifications = list.map(mapNotification).filter(Boolean)
-  return { notifications, user: data.user ?? null, meta: payload ?? null }
+  return { 
+    notifications, 
+    user: data.user ?? null, 
+    meta: payload ?? null,
+    pagination: {
+      current_page: payload?.current_page ?? page,
+      last_page: payload?.last_page ?? 1,
+      per_page: payload?.per_page ?? 20,
+      total: payload?.total ?? 0,
+      next_page_url: payload?.next_page_url ?? null,
+      prev_page_url: payload?.prev_page_url ?? null,
+    },
+  }
 }
 
 export async function markAllNotificationsRead() {

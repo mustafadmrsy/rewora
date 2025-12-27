@@ -16,16 +16,21 @@ const titleByPath = {
 export default function AppShell() {
   const location = useLocation()
   const title = titleByPath[location.pathname] ?? 'Rewora'
+  
+  // Hide header on messages and profile pages
+  const hideHeader = location.pathname === '/mesajlar' || location.pathname === '/profil' || location.pathname.startsWith('/profil/')
 
   return (
     <div className="min-h-screen">
       <Sidebar gold={5800} />
 
       <div className="pl-0 lg:pl-[92px]">
-        <Header title={title} gold={5800} />
+        {!hideHeader && <Header title={title} gold={5800} />}
 
-        <main className="mx-auto max-w-[1480px] px-4 sm:px-6 py-6 pb-[calc(96px+env(safe-area-inset-bottom))] lg:pb-6">
-          <Outlet />
+        <main className="mx-auto max-w-[1480px] px-4 sm:px-6 py-6 pb-[calc(96px+env(safe-area-inset-bottom))] lg:pb-6 w-full overflow-x-hidden">
+          <div className="w-full overflow-x-hidden">
+            <Outlet />
+          </div>
         </main>
       </div>
 

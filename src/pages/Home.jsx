@@ -211,77 +211,20 @@ export default function Home() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-2xl font-semibold tracking-tight text-white">
-            Merhaba, Mustafa
-          </div>
-          <div className="mt-1 text-sm text-white/55">
-            Bugün altın kazanmak için yeni görevler seni bekliyor.
-          </div>
-        </div>
-      </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
           {loadingTask ? (
-            <Card className="overflow-hidden">
+            <Card className="overflow-hidden hidden lg:block">
               <div className="p-6">
                 <Skeleton className="h-24 w-full" />
               </div>
             </Card>
           ) : activeTask ? (
-            <ActiveTaskCard task={activeTask} onContinue={() => navigate('/gorevler')} />
-          ) : null}
-
-          <div className="flex items-center justify-between">
-            <div className="text-lg font-semibold text-white">Paylaşımlar</div>
-            <div className="flex flex-wrap items-center justify-end gap-1">
-              <button
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-white/6 text-white transition hover:bg-white/10 active:scale-95"
-                onClick={async () => {
-                  if (refreshing) return
-                  setRefreshing(true)
-                  try {
-                    const res = await listPosts()
-                    const nextPosts = res.posts ?? []
-                    setPosts(nextPosts)
-                    setLikedIds(() => new Set(nextPosts.filter((p) => p?.is_liked).map((p) => p.id)))
-                    setLikeCounts(() => {
-                      const map = {}
-                      nextPosts.forEach((p) => {
-                        map[p.id] = p.likes
-                      })
-                      return map
-                    })
-                  } finally {
-                    setTimeout(() => setRefreshing(false), 600)
-                  }
-                }}
-                type="button"
-                aria-label="Yenile"
-              >
-                <RotateCw className={refreshing ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
-              </button>
-              <div className="flex items-center gap-1 md:hidden">
-                <button
-                  type="button"
-                  onClick={() => setShowMiniModal(true)}
-                  className="inline-flex min-w-[78px] items-center justify-center gap-1 rounded-full border border-[color:var(--gold)]/50 bg-[color:var(--gold)] px-2 py-1 text-[10px] font-semibold text-black shadow-[0_0_0_3px_rgba(214,255,0,0.16)] transition hover:shadow-[0_0_0_4px_rgba(214,255,0,0.20)] active:scale-[0.98]"
-                >
-                  Ödüller
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowTasksModal(true)}
-                  className="inline-flex min-w-[78px] items-center justify-center gap-1 rounded-full border border-[color:var(--gold)]/50 bg-[color:var(--gold)] px-2 py-1 text-[10px] font-semibold text-black shadow-[0_0_0_3px_rgba(214,255,0,0.16)] transition hover:shadow-[0_0_0_4px_rgba(214,255,0,0.20)] active:scale-[0.98] whitespace-nowrap"
-                >
-                  Devam Ediyor
-                </button>
-              </div>
+            <div className="hidden lg:block">
+              <ActiveTaskCard task={activeTask} onContinue={() => navigate('/gorevler')} />
             </div>
-          </div>
-
+          ) : null}
           {loading ? (
             <div className="mx-auto w-full max-w-[560px] space-y-5">
               {Array.from({ length: 4 }).map((_, i) => (

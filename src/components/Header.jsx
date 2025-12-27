@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { Bell, Search, Home, ListTodo, Gift, MessageCircle, User } from 'lucide-react'
+import { Bell, Search, Home, ListTodo, Gift, MessageCircle, User, ChevronLeft, LucideCheckCircle2, CheckCheck } from 'lucide-react'
 import { Chip, GoldBadge, IconButton } from './ui'
 import { clearSession, getUser } from '../lib/authStorage'
 import { resetEcho } from '../lib/echo'
@@ -25,11 +25,14 @@ export default function Header({ title = 'Rewora' }) {
   const profileMenuRef = useRef(null)
   const [search, setSearch] = useState(qParam)
   const onHome = location.pathname === '/'
-  const [openProfileMenu, setOpenProfileMenu] = useState(false)
+  const onTasks = location.pathname === '/gorevler'
+  const onRewards = location.pathname === '/oduller'
+  const onNotifications = location.pathname === '/bildirimler'
   
-  // Get coin from user session
+  // Get coin and user info from session
   const currentUser = getUser()
   const gold = currentUser?.coin ?? 0
+  const fullName = currentUser ? `${currentUser.fname || ''} ${currentUser.lname || ''}`.trim() : ''
 
   useEffect(() => {
     setSearch(qParam)
@@ -47,22 +50,7 @@ export default function Header({ title = 'Rewora' }) {
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [openNotif])
 
-  useEffect(() => {
-    function onProfileDocClick(e) {
-      if (!openProfileMenu) return
-      if (profileMenuRef.current && profileMenuRef.current.contains(e.target)) return
-      setOpenProfileMenu(false)
-    }
-    function onEsc(e) {
-      if (e.key === 'Escape') setOpenProfileMenu(false)
-    }
-    document.addEventListener('mousedown', onProfileDocClick)
-    document.addEventListener('keydown', onEsc)
-    return () => {
-      document.removeEventListener('mousedown', onProfileDocClick)
-      document.removeEventListener('keydown', onEsc)
-    }
-  }, [openProfileMenu])
+  
 
   const mobileNav = [
     { to: '/', label: 'Anasayfa', icon: Home },
@@ -94,42 +82,66 @@ export default function Header({ title = 'Rewora' }) {
     <header className="sticky top-0 z-30 border-b border-white/8 bg-black/20 backdrop-blur-xl">
       <div className="mx-auto flex max-w-[1480px] items-center gap-4 px-6 py-4">
         <div className="flex min-w-0 flex-1 items-center gap-4">
-          <div className="min-w-0">
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              className="flex items-center gap-2 text-left cursor-pointer"
-              aria-label="Rewora"
-            >
-              <img
-                src="/logo/rewora_logo.png"
-                alt="Rewora"
-                className="h-8 w-8 shrink-0"
-              />
-              <span className="text-lg font-semibold leading-none tracking-tight text-white">
-                ewora
-              </span>
-            </button>
-          </div>
-
-          <div className="hidden flex-1 items-center gap-2 lg:flex">
-            <div className="relative w-full max-w-[520px]">
-              <Search
-                size={18}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-white/45"
-              />
-              <input
-                placeholder="Arama"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') onSearchSubmit()
-                }}
-                className="h-11 w-full rounded-full border border-white/12 bg-white/6 pl-11 pr-4 text-sm text-white placeholder:text-white/35 outline-none transition focus:border-[color:var(--gold)]/40"
-              />
+          {onHome ? (
+            <div className="min-w-0">
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="flex items-center gap-2 text-left cursor-pointer"
+                aria-label="Rewora"
+              >
+                <img
+                  src="/logo/rewora_logo.png"
+                  alt="Rewora"
+                  className="h-8 w-8 shrink-0"
+                />
+                <span className="text-lg font-semibold leading-none tracking-tight text-white">
+                  ewora
+                </span>
+              </button>
             </div>
+          ) : onNotifications ? (
+            <div className="flex min-w-0 flex-1 items-center relative">
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="inline-flex items-center justify-center text-[color:var(--gold)] transition hover:text-[color:var(--gold)]/80 cursor-pointer z-10"
+                aria-label="Geri"
+              >
+                <ChevronLeft size={24} />
+              </button>
+              <div className="flex-1 text-center absolute left-0 right-0 pointer-events-none">
+                <div className="text-lg font-semibold leading-none tracking-tight text-white">
+                  Bildirimler
+                </div>
+              </div>
+            </div>
+          ) : (onTasks || onRewards) && fullName ? (
+            <div className="min-w-0">
+              <div className="text-lg font-semibold leading-none tracking-tight text-white">
+                {fullName}
+              </div>
+            </div>
+          ) : null}
 
-            {onHome ? (
+          {onHome ? (
+            <div className="hidden flex-1 items-center gap-2 lg:flex">
+              <div className="relative w-full max-w-[520px]">
+                <Search
+                  size={18}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-white/45"
+                />
+                <input
+                  placeholder="Arama"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') onSearchSubmit()
+                  }}
+                  className="h-11 w-full rounded-full border border-white/12 bg-white/6 pl-11 pr-4 text-sm text-white placeholder:text-white/35 outline-none transition focus:border-[color:var(--gold)]/40"
+                />
+              </div>
+
               <div className="hidden items-center gap-2 xl:flex">
                 {chips.map((c) => (
                   <Chip
@@ -142,40 +154,50 @@ export default function Header({ title = 'Rewora' }) {
                   </Chip>
                 ))}
               </div>
-            ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        {onNotifications ? (
+          <div className="flex items-center">
+            <button
+              type="button"
+              aria-label="Tümünü okundu yap"
+              onClick={async () => {
+                // This will be handled by Notifications page
+                const event = new CustomEvent('markAllRead')
+                window.dispatchEvent(event)
+              }}
+              className="inline-flex items-center justify-center text-[color:var(--gold)] transition hover:text-[color:var(--gold)]/80 cursor-pointer w-6"
+            >
+              <CheckCheck size={20} />
+            </button>
           </div>
-        </div>
+        ) : (
+          <>
+            <div className="hidden items-center gap-3 lg:flex">
+              <GoldBadge className="justify-center">
+                <span className="text-xs font-semibold">{gold}</span>
+                <span className="text-xs font-semibold">altın</span>
+              </GoldBadge>
+            </div>
 
-        <div className="hidden items-center gap-3 lg:flex">
-          <GoldBadge className="justify-center">
-            <span className="text-xs font-semibold">{gold}</span>
-            <span className="text-xs font-semibold">altın</span>
-          </GoldBadge>
-        </div>
-
-        <div className="flex items-center gap-3 lg:hidden">
-          <GoldBadge className="justify-center">
-            <span className="text-xs font-semibold">{gold}</span>
-            <span className="text-xs font-semibold">altın</span>
-          </GoldBadge>
-          <button
-            type="button"
-            aria-label="Bildirimler"
-            onClick={() => navigate('/bildirimler')}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/6 text-white/80 transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--gold)]/60 cursor-pointer"
-          >
-            <Bell size={18} />
-          </button>
-          <button
-            className="h-10 w-10 overflow-hidden rounded-full border border-white/10 bg-white/8"
-            onClick={() => setOpenProfileMenu((v) => !v)}
-            type="button"
-            aria-label="Profil"
-            style={{ cursor: 'pointer' }}
-          >
-            <div className="h-full w-full bg-gradient-to-br from-white/15 to-white/0 scale-110" />
-          </button>
-        </div>
+            <div className="flex items-center gap-3 lg:hidden">
+              <GoldBadge className="justify-center">
+                <span className="text-xs font-semibold">{gold}</span>
+                <span className="text-xs font-semibold">altın</span>
+              </GoldBadge>
+              <button
+                type="button"
+                aria-label="Bildirimler"
+                onClick={() => navigate('/bildirimler')}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/6 text-white/80 transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--gold)]/60 cursor-pointer"
+              >
+                <Bell size={18} />
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       {onHome ? (
@@ -210,37 +232,7 @@ export default function Header({ title = 'Rewora' }) {
           </div>
         </div>
       ) : null}
-      {openProfileMenu ? (
-        <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setOpenProfileMenu(false)}>
-          <div
-            ref={profileMenuRef}
-            className="absolute right-3 top-16 w-56 overflow-hidden rounded-2xl border border-white/10 bg-black/90 text-white shadow-[0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur animate-[fadeIn_150ms_ease]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 bg-white/4">
-              <div className="h-9 w-9 overflow-hidden rounded-full border border-white/12 bg-white/10" />
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-white">Profil</div>
-                <div className="text-[11px] text-white/55">Hızlı gezinme</div>
-              </div>
-            </div>
-            <div className="py-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setOpenProfileMenu(false)
-                  clearSession()
-                  resetEcho()
-                  navigate('/giris')
-                }}
-                className="w-full px-4 py-3 text-left text-sm transition flex items-center gap-3 text-red-200 hover:bg-red-500/10"
-              >
-                <span className="font-semibold">Çıkış Yap</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+     
     </header>
   )
 }

@@ -16,6 +16,7 @@
 html,
 body {
   height: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -23,20 +24,44 @@ body {
   /* Arkaplanda banding/ton geçişi istemiyoruz: tek renk arka plan */
   background: var(--bg-1);
   color: var(--text);
+  /* Hide scrollbar globally */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+body::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 #root {
   min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Hide all scrollbars globally */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .rewora-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   scroll-behavior: smooth;
 }
 
 .rewora-scroll::-webkit-scrollbar {
-  height: 10px;
+  display: none;
+  height: 0;
+  width: 0;
 }
 
 .rewora-scroll::-webkit-scrollbar-track {
