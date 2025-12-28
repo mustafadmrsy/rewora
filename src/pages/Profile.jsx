@@ -12,10 +12,10 @@ export default function Profile() {
   const navigate = useNavigate()
   const currentUser = getUser()
   const currentUserId = currentUser?.id
-  
+
   // If no id provided, use current user's id
   const profileId = id || currentUserId
-  
+
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState(null)
   const [posts, setPosts] = useState([])
@@ -24,11 +24,13 @@ export default function Profile() {
   const [following, setFollowing] = useState([])
   const [loadingFollowers, setLoadingFollowers] = useState(false)
   const [loadingFollowing, setLoadingFollowing] = useState(false)
+  const [loadedFollowersFor, setLoadedFollowersFor] = useState(null) // Hangi profileId için yüklendi
+  const [loadedFollowingFor, setLoadedFollowingFor] = useState(null) // Hangi profileId için yüklendi
   const [modal, setModal] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const modalPanelRef = useRef(null)
-  
+
   const [likedIds, setLikedIds] = useState(() => new Set())
   const [likeCounts, setLikeCounts] = useState(() => {
     const map = {}
@@ -69,18 +71,31 @@ export default function Profile() {
       try {
         const res = await getProfile(profileId)
         if (cancelled) return
-        
+
         setProfile(res.profile)
         setPosts(res.posts ?? [])
         setPagination(res.pagination)
-        
+
+        // Send profile info to Header via custom event
+        if (res.profile) {
+          const fullName = res.profile.fname && res.profile.lname
+            ? `${res.profile.fname} ${res.profile.lname}`
+            : res.profile.fname || res.profile.lname || 'Kullanıcı'
+          window.dispatchEvent(new CustomEvent('profileLoaded', {
+            detail: {
+              fullName,
+              isOwn: isOwn
+            }
+          }))
+        }
+
         // Set liked posts
         const likedSet = new Set()
         res.posts?.forEach((p) => {
           if (p?.is_liked) likedSet.add(p.id)
         })
         setLikedIds(likedSet)
-        
+
         // Set like counts
         const counts = {}
         res.posts?.forEach((p) => {
@@ -102,31 +117,51 @@ export default function Profile() {
     }
   }, [profileId])
 
+  // ProfileId değiştiğinde followers ve following state'lerini temizle
+  useEffect(() => {
+    setFollowers([])
+    setFollowing([])
+    setLoadedFollowersFor(null)
+    setLoadedFollowingFor(null)
+  }, [profileId])
+
   const followersCount = profile?.followers_count ?? 0
   const followingCount = profile?.following_count ?? 0
   const postsCount = profile?.posts_count ?? 0
 
   async function openList(kind) {
     setModal(kind)
-    
+
     // Load followers or following when modal opens
-    if (kind === 'followers' && followers.length === 0 && !loadingFollowers) {
+    // Önceki profileId için yüklenmişse veya boşsa yeniden yükle
+    // String karşılaştırması yap (type coercion sorununu önlemek için)
+    const currentProfileId = String(profileId ?? '')
+    const loadedFollowersId = loadedFollowersFor ? String(loadedFollowersFor) : null
+    const loadedFollowingId = loadedFollowingFor ? String(loadedFollowingFor) : null
+
+    if (kind === 'followers' && (loadedFollowersId !== currentProfileId || followers.length === 0) && !loadingFollowers) {
       setLoadingFollowers(true)
       try {
         const data = await getFollowers(profileId)
         setFollowers(data)
+        setLoadedFollowersFor(profileId) // Hangi profileId için yüklendiğini kaydet
       } catch (err) {
+        console.error('Error loading followers:', err)
         setFollowers([])
+        setLoadedFollowersFor(null)
       } finally {
         setLoadingFollowers(false)
       }
-    } else if (kind === 'following' && following.length === 0 && !loadingFollowing) {
+    } else if (kind === 'following' && (loadedFollowingId !== currentProfileId || following.length === 0) && !loadingFollowing) {
       setLoadingFollowing(true)
       try {
         const data = await getFollowing(profileId)
         setFollowing(data)
+        setLoadedFollowingFor(profileId) // Hangi profileId için yüklendiğini kaydet
       } catch (err) {
+        console.error('Error loading following:', err)
         setFollowing([])
+        setLoadedFollowingFor(null)
       } finally {
         setLoadingFollowing(false)
       }
@@ -209,8 +244,8 @@ export default function Profile() {
     )
   }
 
-  const fullName = profile.fname && profile.lname 
-    ? `${profile.fname} ${profile.lname}` 
+  const fullName = profile.fname && profile.lname
+    ? `${profile.fname} ${profile.lname}`
     : profile.fname || profile.lname || 'Kullanıcı'
   const photoUrl = resolvePostImageUrl(profile.photo)
 
@@ -220,8 +255,8 @@ export default function Profile() {
         <div className="relative shrink-0">
           <div className="h-[92px] w-[92px] rounded-full border-2 border-[color:var(--gold)] bg-white/8 overflow-hidden">
             {photoUrl ? (
-              <img 
-                src={photoUrl} 
+              <img
+                src={photoUrl}
                 alt={fullName}
                 className="h-full w-full object-cover"
                 loading="lazy"
@@ -278,9 +313,9 @@ export default function Profile() {
                 aria-label="Post detayını görüntüle"
               >
                 {post.image_url ? (
-                  <img 
-                    src={post.image_url} 
-                    alt="" 
+                  <img
+                    src={post.image_url}
+                    alt=""
                     className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-200"
                     loading="lazy"
                   />
@@ -350,8 +385,8 @@ export default function Profile() {
                       >
                         <div className="h-10 w-10 rounded-full border border-white/10 bg-white/10 overflow-hidden shrink-0">
                           {u.photo_url ? (
-                            <img 
-                              src={u.photo_url} 
+                            <img
+                              src={u.photo_url}
                               alt={u.name}
                               className="h-full w-full object-cover"
                               loading="lazy"
@@ -428,7 +463,7 @@ export default function Profile() {
                   className="flex w-full items-center justify-between rounded-[16px] border border-white/10 bg-white/6 px-4 py-4 text-left hover:bg-white/8 cursor-pointer"
                   onClick={() => {
                     setMenuOpen(false)
-                    navigate('/oduller')
+                    navigate('/oduller?tab=gecmis')
                   }}
                 >
                   <div className="text-sm font-semibold text-white">Ödül Geçmişim</div>
@@ -450,6 +485,10 @@ export default function Profile() {
                 <button
                   type="button"
                   className="flex w-full items-center justify-between rounded-[16px] border border-white/10 bg-white/6 px-4 py-4 text-left hover:bg-white/8 cursor-pointer"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    navigate('/guvenlik')
+                  }}
                 >
                   <div className="text-sm font-semibold text-white">Güvenlik</div>
                   <ChevronRight size={18} className="text-white/60" />
@@ -458,6 +497,10 @@ export default function Profile() {
                 <button
                   type="button"
                   className="flex w-full items-center justify-between rounded-[16px] border border-white/10 bg-white/6 px-4 py-4 text-left hover:bg-white/8 cursor-pointer"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    navigate('/engellenen-kullanicilar')
+                  }}
                 >
                   <div className="text-sm font-semibold text-white">Engellenen Kullanıcılar</div>
                   <ChevronRight size={18} className="text-white/60" />

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { MapPin, CheckCircle, QrCode, Copy, ChevronDown, ChevronUp, Eye, X } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import Card from '../components/Card'
 import { Button, Chip, GoldBadge } from '../components/ui'
@@ -417,8 +417,10 @@ function RewardCard({ item, type = 'offer' }) {
 }
 
 export default function Rewards() {
-  const [tab, setTab] = useState('oduller')
-  const [loading, setLoading] = useState(true)
+  const [searchParams] = useSearchParams()
+  const initialTab = searchParams.get('tab') === 'gecmis' ? 'gecmis' : 'oduller'
+  const [tab, setTab] = useState(initialTab)
+  const [loading, setLoading] = useState(false)
   const [items, setItems] = useState([])
   const [history, setHistory] = useState([])
   const [user, setUser] = useState(null)
@@ -426,50 +428,80 @@ export default function Rewards() {
   // Offers pagination state
   const [offersNextPageUrl, setOffersNextPageUrl] = useState(null)
   const [isLoadingMoreOffers, setIsLoadingMoreOffers] = useState(false)
+  const [offersLoaded, setOffersLoaded] = useState(false) // Ödüller tab'ı için veri yüklendi mi?
 
   // History pagination state
   const [historyNextPageUrl, setHistoryNextPageUrl] = useState(null)
   const [isLoadingMoreHistory, setIsLoadingMoreHistory] = useState(false)
+  const [historyLoaded, setHistoryLoaded] = useState(false) // Ödül Geçmişim tab'ı için veri yüklendi mi?
 
   const offersScrollRef = useRef(null)
   const historyScrollRef = useRef(null)
 
-  // Initial load
+  // URL parametresinden tab'ı oku ve güncelle
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam === 'gecmis' && tab !== 'gecmis') {
+      setTab('gecmis')
+    } else if (!tabParam && tab === 'gecmis') {
+      // URL'de tab parametresi yoksa ve şu an 'gecmis' tab'ındaysak, 'oduller' tab'ına geç
+      setTab('oduller')
+    }
+  }, [searchParams])
+
+  // Tab değiştiğinde ilgili veriyi yükle
   useEffect(() => {
     let cancelled = false
 
-    async function load() {
-      setLoading(true)
-      try {
-        const [offersRes, userOffersRes] = await Promise.all([
-          listOffers(),
-          listUserOffers()
-        ])
-        if (cancelled) return
+    async function loadTabData() {
+      if (tab === 'oduller' && !offersLoaded) {
+        // Ödüller tab'ına tıklandı ve henüz yüklenmemişse
+        setLoading(true)
+        try {
+          const offersRes = await listOffers()
+          if (cancelled) return
 
-        setItems(offersRes.offers ?? [])
-        setOffersNextPageUrl(offersRes.nextPageUrl)
+          setItems(offersRes.offers ?? [])
+          setOffersNextPageUrl(offersRes.nextPageUrl)
+          if (offersRes.user) {
+            setUser(offersRes.user)
+          }
+          setOffersLoaded(true)
+        } catch (error) {
+          console.error('Load offers error:', error)
+          if (cancelled) return
+          setItems([])
+        } finally {
+          if (!cancelled) setLoading(false)
+        }
+      } else if (tab === 'gecmis' && !historyLoaded) {
+        // Ödül Geçmişim tab'ına tıklandı ve henüz yüklenmemişse
+        setLoading(true)
+        try {
+          const userOffersRes = await listUserOffers()
+          if (cancelled) return
 
-        setHistory(userOffersRes.userOffers ?? [])
-        setHistoryNextPageUrl(userOffersRes.nextPageUrl)
-
-        setUser(userOffersRes.user ?? offersRes.user ?? null)
-      } catch (error) {
-        console.error('Load error:', error)
-        if (cancelled) return
-        setItems([])
-        setHistory([])
-        setUser(null)
-      } finally {
-        if (!cancelled) setLoading(false)
+          setHistory(userOffersRes.userOffers ?? [])
+          setHistoryNextPageUrl(userOffersRes.nextPageUrl)
+          if (userOffersRes.user) {
+            setUser(userOffersRes.user)
+          }
+          setHistoryLoaded(true)
+        } catch (error) {
+          console.error('Load history error:', error)
+          if (cancelled) return
+          setHistory([])
+        } finally {
+          if (!cancelled) setLoading(false)
+        }
       }
     }
 
-    load()
+    loadTabData()
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [tab, offersLoaded, historyLoaded])
 
   // Infinite scroll for offers
   useEffect(() => {

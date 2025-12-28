@@ -233,7 +233,6 @@ export default function Tasks() {
 
     const [missionsNextPageUrl, setMissionsNextPageUrl] = useState(null)
     const [isLoadingMoreMissions, setIsLoadingMoreMissions] = useState(false)
-    const [showAllRecommended, setShowAllRecommended] = useState(false)
 
     const activeScrollRef = useRef(null)
     const recommendedScrollRef = useRef(null)
@@ -253,12 +252,6 @@ export default function Tasks() {
                 ])
 
                 if (cancelled) return
-
-                console.log('Recommended tasks response:', missionsRes)
-                console.log('Active tasks response:', userMissionsRes)
-                console.log('Active tasks raw:', userMissionsRes.userMissions)
-                console.log('Active tasks length:', userMissionsRes.userMissions?.length)
-                console.log('Offers response:', offersRes)
 
                 setMissions(missionsRes.missions ?? [])
                 setMissionsNextPageUrl(missionsRes.pagination?.next_page_url ?? null)
@@ -286,7 +279,6 @@ export default function Tasks() {
 
     // Active tasks mapping - Tüm status'leri göster (filtreleme yok)
     const activeTasks = useMemo(() => {
-        console.log('activeTasks - userMissions:', userMissions)
 
         // Filtreleme yapmadan tüm user missions'ı al
         const mapped = (userMissions ?? [])
@@ -312,13 +304,9 @@ export default function Tasks() {
                     created_at: mission?.created_at,
                     image_url: mission?.image_url,
                 }
-                console.log('activeTasks - mapped item:', task)
                 return task
             })
             .filter(Boolean)
-
-        console.log('activeTasks - final:', mapped)
-        console.log('activeTasks - total count:', mapped.length)
         return mapped
     }, [userMissions])
 
@@ -361,16 +349,14 @@ export default function Tasks() {
         }))
     }, [missions])
 
-    // Vertical scroll for recommended
+    // Horizontal scroll for recommended tasks (same as active tasks)
     useEffect(() => {
-        if (!showAllRecommended) return
-
         const scrollContainer = recommendedScrollRef.current
         if (!scrollContainer) return
 
         async function handleScroll() {
-            const { scrollTop, scrollHeight, clientHeight } = scrollContainer
-            const isNearEnd = scrollTop + clientHeight >= scrollHeight - 100
+            const { scrollLeft, scrollWidth, clientWidth } = scrollContainer
+            const isNearEnd = scrollLeft + clientWidth >= scrollWidth - 100
 
             if (isNearEnd && missionsNextPageUrl && !isLoadingMoreMissions) {
                 setIsLoadingMoreMissions(true)
@@ -379,7 +365,7 @@ export default function Tasks() {
                     setMissions(prev => [...prev, ...(missionsRes.missions ?? [])])
                     setMissionsNextPageUrl(missionsRes.pagination?.next_page_url ?? null)
                 } catch (error) {
-                    console.error('Load more tasks error:', error)
+                    console.error('Load more recommended tasks error:', error)
                 } finally {
                     setIsLoadingMoreMissions(false)
                 }
@@ -388,12 +374,7 @@ export default function Tasks() {
 
         scrollContainer.addEventListener('scroll', handleScroll)
         return () => scrollContainer.removeEventListener('scroll', handleScroll)
-    }, [showAllRecommended, missionsNextPageUrl, isLoadingMoreMissions])
-
-    const recommendedTasksPreview = useMemo(() => {
-        if (showAllRecommended) return recommendedTasks
-        return recommendedTasks.slice(0, 2)
-    }, [recommendedTasks, showAllRecommended])
+    }, [missionsNextPageUrl, isLoadingMoreMissions])
 
     return (
         <div className="mx-auto w-full max-w-[1480px] space-y-6 p-4 bg-[#0a0a0a] min-h-screen">
@@ -429,31 +410,30 @@ export default function Tasks() {
             <section className="space-y-4">
                 <div className="flex items-center justify-between gap-4">
                     <div className="text-2xl font-semibold tracking-tight text-white">Önerilenler</div>
-                    {!showAllRecommended && recommendedTasks.length > 2 && (
-                        <button type="button" className="text-sm font-semibold text-white/60 hover:text-white/85 transition" onClick={() => setShowAllRecommended(true)}>
-                            Tümünü Gör
-                        </button>
+                    {!loading && recommendedTasks.length > 0 && (
+                        <div className="text-xs font-semibold text-white/70">{recommendedTasks.length} görev</div>
                     )}
                 </div>
 
                 {loading ? (
                     <Card><div className="p-6 text-center text-sm text-white/55">Yükleniyor...</div></Card>
-                ) : recommendedTasksPreview.length > 0 ? (
-                    showAllRecommended ? (
-                        <div ref={recommendedScrollRef} className="overflow-y-auto scrollbar-hide" style={{ maxHeight: 'calc(100vh - 400px)', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 pb-4">
-                                {recommendedTasks.map((task) => (
-                                    <RecommendedTaskCard key={task.id} task={task} onInspect={() => navigate(`/gorevler/${task.id}`)} />
-                                ))}
+                ) : recommendedTasks.length > 0 ? (
+                    <div
+                        ref={recommendedScrollRef}
+                        className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide"
+                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                    >
+                        {recommendedTasks.map((task) => (
+                            <div key={task.id} className="w-[90%] sm:w-[85%] md:w-[calc(33.333%-1rem)] flex-shrink-0">
+                                <RecommendedTaskCard task={task} onInspect={() => navigate(`/gorevler/${task.id}`)} />
                             </div>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                            {recommendedTasksPreview.map((task) => (
-                                <RecommendedTaskCard key={task.id} task={task} onInspect={() => navigate(`/gorevler/${task.id}`)} />
-                            ))}
-                        </div>
-                    )
+                        ))}
+                        {isLoadingMoreMissions && (
+                            <div className="w-[90%] sm:w-[85%] md:w-[calc(33.333%-1rem)] flex-shrink-0 flex items-center justify-center">
+                                <div className="text-sm text-white/55">Yükleniyor...</div>
+                            </div>
+                        )}
+                    </div>
                 ) : (
                     <Card>
                         <div className="p-10">

@@ -219,7 +219,16 @@ export default function PostDetail() {
           <Card className="overflow-hidden lg:sticky lg:top-24 lg:h-[calc(100vh-220px)]">
             <div className="flex flex-col h-full">
               <div className="flex items-center gap-3 px-5 pt-5">
-                <div className="h-10 w-10 overflow-hidden rounded-full border border-white/10 bg-white/8">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const userId = post?.user_id ?? post?.user?.id
+                    if (userId) {
+                      navigate(`/profil/${userId}`)
+                    }
+                  }}
+                  className="h-10 w-10 overflow-hidden rounded-full border border-white/10 bg-white/8 cursor-pointer hover:border-white/20 transition"
+                >
                   {post?.user_photo_url && !avatarError ? (
                     <img
                       src={post.user_photo_url}
@@ -231,7 +240,7 @@ export default function PostDetail() {
                   ) : (
                     <div className="h-full w-full bg-gradient-to-br from-white/15 to-white/0" />
                   )}
-                </div>
+                </button>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <div className="truncate text-sm font-semibold text-white">{post?.handle ?? ''}</div>

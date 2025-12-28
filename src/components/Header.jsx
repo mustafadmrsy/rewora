@@ -19,6 +19,7 @@ export default function Header({ title = 'Rewora' }) {
   const [categories, setCategories] = useState([])
   const [messagesThreadOpen, setMessagesThreadOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [profileFullName, setProfileFullName] = useState(null)
   const onHome = location.pathname === '/'
   const onTasks = location.pathname === '/gorevler'
   const onTaskDetail = location.pathname.startsWith('/gorevler/') && location.pathname !== '/gorevler'
@@ -26,6 +27,8 @@ export default function Header({ title = 'Rewora' }) {
   const onRewardDetail = location.pathname.startsWith('/oduller/')
   const onMessages = location.pathname === '/mesajlar'
   const onProfile = location.pathname === '/profil' || location.pathname.startsWith('/profil/')
+  const onSecurity = location.pathname === '/guvenlik'
+  const onBlockedUsers = location.pathname === '/engellenen-kullanicilar'
   const onNotifications = location.pathname === '/bildirimler'
 
   // Get coin and user info from session
@@ -65,6 +68,30 @@ export default function Header({ title = 'Rewora' }) {
       window.removeEventListener('messagesThreadState', handleMessagesThreadState)
     }
   }, [])
+
+  // Listen for profile loaded from Profile page
+  useEffect(() => {
+    function handleProfileLoaded(event) {
+      const { fullName, isOwn } = event.detail ?? {}
+      if (!isOwn) {
+        setProfileFullName(fullName ?? null)
+      } else {
+        setProfileFullName(null)
+      }
+    }
+
+    window.addEventListener('profileLoaded', handleProfileLoaded)
+    return () => {
+      window.removeEventListener('profileLoaded', handleProfileLoaded)
+    }
+  }, [])
+
+  // Clear profile name when leaving profile page
+  useEffect(() => {
+    if (!onProfile) {
+      setProfileFullName(null)
+    }
+  }, [onProfile])
 
   // Detect mobile screen size
   useEffect(() => {
@@ -120,7 +147,20 @@ export default function Header({ title = 'Rewora' }) {
     <header className="sticky top-0 z-30">
       <div className="mx-auto flex max-w-[1480px] items-center gap-4 px-6 py-4">
         <div className="flex min-w-0 flex-1 items-center gap-4">
-          {onHome ? (
+          {onProfile && !isOwnProfile ? (
+            // Başka kullanıcının profili - geri butonu göster
+            <>
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="inline-flex items-center justify-center text-white/80 transition hover:text-white"
+                aria-label="Geri"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <div className="flex-1" />
+            </>
+          ) : onHome ? (
             <div className="min-w-0">
               <button
                 type="button"
@@ -154,6 +194,40 @@ export default function Header({ title = 'Rewora' }) {
                 </div>
               </div>
             </div>
+          ) : onSecurity ? (
+            <>
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="inline-flex items-center justify-center text-white/80 transition hover:text-white"
+                aria-label="Geri"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <div className="min-w-0">
+                <div className="text-lg font-semibold leading-none tracking-tight text-white">
+                  Güvenlik
+                </div>
+              </div>
+              <div className="flex-1" />
+            </>
+          ) : onBlockedUsers ? (
+            <>
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="inline-flex items-center justify-center text-white/80 transition hover:text-white"
+                aria-label="Geri"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <div className="min-w-0">
+                <div className="text-lg font-semibold leading-none tracking-tight text-white">
+                  Engellenen Kullanıcılar
+                </div>
+              </div>
+              <div className="flex-1" />
+            </>
           ) : onRewardDetail || onTaskDetail ? (
             <>
               <button
@@ -173,22 +247,34 @@ export default function Header({ title = 'Rewora' }) {
               </div>
             </div>
           ) : onMessages ? (
-            // Mesajlar sayfası - tam ortada göster
-            <div className="flex min-w-0 flex-1 items-center relative">
-              <div className="flex-1 text-center absolute left-0 right-0 pointer-events-none">
+            // Mesajlar sayfası - ortada göster
+            <>
+              <div className="w-10" /> {/* Spacer for alignment */}
+              <div className="flex-1 flex items-center justify-center">
                 <div className="text-lg font-semibold leading-none tracking-tight text-white">
                   Mesajlar
                 </div>
               </div>
+              <div className="w-10" /> {/* Spacer for alignment */}
+            </>
+          ) : onProfile && !isOwnProfile && profileFullName ? (
+            // Başka kullanıcının profili - Görevler/Ödüller sayfalarındaki gibi göster
+            <div className="min-w-0 flex-1">
+              <div className="text-lg font-semibold leading-none tracking-tight text-white">
+                {profileFullName}
+              </div>
             </div>
-          ) : onProfile ? (
-            <div className="flex min-w-0 flex-1 items-center relative">
-              <div className="flex-1 text-center absolute left-0 right-0 pointer-events-none">
+          ) : onProfile && isOwnProfile ? (
+            // Kendi profilimiz - ortada "Profil" yazısı
+            <>
+              <div className="w-10" /> {/* Spacer for alignment */}
+              <div className="flex-1 flex items-center justify-center">
                 <div className="text-lg font-semibold leading-none tracking-tight text-white">
                   Profil
                 </div>
               </div>
-            </div>
+              <div className="w-10" /> {/* Spacer for alignment */}
+            </>
           ) : null}
 
           {onHome ? (
@@ -242,20 +328,20 @@ export default function Header({ title = 'Rewora' }) {
           </div>
         ) : (
           <>
-            {!(onMessages || onProfile) && (
-              <>
-                <div className="hidden items-center gap-3 lg:flex">
-                  <GoldBadge className="justify-center">
-                    <span className="text-xs font-semibold">{gold}</span>
-                    <span className="text-xs font-semibold">altın</span>
-                  </GoldBadge>
-                </div>
+          {!(onMessages || onProfile || onSecurity || onBlockedUsers) && (
+            <>
+              <div className="hidden items-center gap-3 lg:flex">
+                <GoldBadge className="justify-center">
+                  <span className="text-xs font-semibold">{gold}</span>
+                  <span className="text-xs font-semibold">altın</span>
+                </GoldBadge>
+              </div>
 
-                <div className="flex items-center gap-3 lg:hidden">
-                  <GoldBadge className="justify-center">
-                    <span className="text-xs font-semibold">{gold}</span>
-                    <span className="text-xs font-semibold">altın</span>
-                  </GoldBadge>
+              <div className="flex items-center gap-3 lg:hidden">
+                <GoldBadge className="justify-center">
+                  <span className="text-xs font-semibold">{gold}</span>
+                  <span className="text-xs font-semibold">altın</span>
+                </GoldBadge>
                   {onHome && (
                     <button
                       type="button"

@@ -129,7 +129,18 @@ export default function FeedCard({ post, liked, likes, onLike, onOpen }) {
     <Card className="group hover:scale-[1.005] hover:border-white/12 hover:bg-white/6 hover:shadow-[var(--shadow)]">
       <div className="p-4">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 overflow-hidden rounded-full border border-white/10 bg-white/8">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              const userId = post?.user_id ?? post?.user?.id
+              if (userId) {
+                navigate(`/profil/${userId}`)
+              }
+            }}
+            className="h-10 w-10 overflow-hidden rounded-full border border-white/10 bg-white/8 cursor-pointer hover:border-white/20 transition"
+          >
             {post?.user_photo_url && !avatarError ? (
               <img
                 src={post.user_photo_url}
@@ -141,7 +152,7 @@ export default function FeedCard({ post, liked, likes, onLike, onOpen }) {
             ) : (
               <div className="h-full w-full bg-gradient-to-br from-white/15 to-white/0" />
             )}
-          </div>
+          </button>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <div className="truncate text-sm font-semibold text-white">{post?.handle ?? ''}</div>

@@ -19,7 +19,6 @@ export async function connectToConversation(conversationId) {
 
   // Eğer farklı bir conversation'a bağlanıyorsak, önce eski bağlantıyı kapat
   if (socket && currentConversation !== conversationId) {
-    console.log('[WS] Closing previous connection for conversation:', currentConversation)
     socket.close()
     socket = null
     socketId = null
@@ -27,7 +26,6 @@ export async function connectToConversation(conversationId) {
 
   // Eğer zaten bağlanma işlemi devam ediyorsa, bekle
   if (isConnecting) {
-    console.log('[WS] Already connecting, waiting...')
     return
   }
 
@@ -44,12 +42,10 @@ export async function connectToConversation(conversationId) {
     socket = new WebSocket(WS_URL)
 
     socket.onopen = () => {
-      console.log('[WS] Connected to conversation:', conversationId)
       isConnecting = false
     }
 
     socket.onclose = () => {
-      console.log('[WS] Disconnected from conversation:', currentConversation)
       // Sadece bu conversation için kapatıldıysa temizle
       if (currentConversation === conversationId) {
         socket = null
@@ -86,7 +82,6 @@ export async function connectToConversation(conversationId) {
 
         // Conversation değişmiş olabilir, kontrol et
         if (currentConversation !== conversationId) {
-          console.log('[WS] Conversation changed during connection, aborting auth')
           return
         }
 
@@ -150,7 +145,6 @@ export async function connectToConversation(conversationId) {
 
 export function disconnect() {
   if (socket) {
-    console.log('[WS] Manually disconnecting')
     socket.close()
     socket = null
     socketId = null

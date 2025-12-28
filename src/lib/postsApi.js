@@ -13,7 +13,7 @@ function toArray(maybeArray) {
 
 export function formatRelativeDate(dateInput) {
   if (!dateInput) return ''
-  
+
   // Handle ISO 8601 format and other date strings
   let d
   if (typeof dateInput === 'string') {
@@ -23,7 +23,7 @@ export function formatRelativeDate(dateInput) {
   } else {
     d = new Date(dateInput)
   }
-  
+
   if (Number.isNaN(d.getTime())) {
     // Try parsing as timestamp
     const timestamp = typeof dateInput === 'string' ? Date.parse(dateInput) : dateInput
@@ -33,17 +33,17 @@ export function formatRelativeDate(dateInput) {
       return ''
     }
   }
-  
+
   if (Number.isNaN(d.getTime())) return ''
-  
+
   const diffMs = Date.now() - d.getTime()
   if (diffMs < 0) return 'şimdi' // Future date
-  
+
   const sec = Math.floor(diffMs / 1000)
   const min = Math.floor(sec / 60)
   const hr = Math.floor(min / 60)
   const day = Math.floor(hr / 24)
-  
+
   if (sec < 60) return `${sec}s`
   if (min < 60) return `${min}dk`
   if (hr < 24) return `${hr}sa`
@@ -158,10 +158,10 @@ export async function listPosts() {
         : toArray(postsPayload)
 
   const posts = postsRaw.map(mapPost).filter(Boolean)
-  return { 
-    posts, 
-    categories: data.categories ?? [], 
-    user: data.user ?? null, 
+  return {
+    posts,
+    categories: data.categories ?? [],
+    user: data.user ?? null,
     meta: postsPayload ?? null,
     continue_mission: data.continiue_mission ?? data.continue_mission ?? null, // Backend'de typo var: continiue_mission
     last_three_offers: data.last_three_offers ?? []
@@ -215,11 +215,11 @@ export async function getProfile(userId) {
   const res = await api.get(`/profile/${userId}`)
   // Response format: { success: true, message: "...", data: { profile: {...}, posts: [...], pagination: {...} } }
   const responseData = res?.data ?? {}
-  
+
   const profile = responseData.profile ?? null
   const posts = Array.isArray(responseData.posts) ? responseData.posts : []
   const pagination = responseData.pagination ?? responseData.posts_pagination ?? null
-  
+
   // Map posts using mapPost function - posts may have different structure in profile
   const mappedPosts = posts.map((p) => {
     // If post already has full structure, use mapPost
@@ -235,7 +235,7 @@ export async function getProfile(userId) {
     }
     return mapPost(p)
   }).filter(Boolean)
-  
+
   return {
     profile,
     posts: mappedPosts,
@@ -248,15 +248,15 @@ export async function getProfile(userId) {
 export async function getFollowers(userId) {
   const res = await api.get(`/followers/${userId}`)
   // Response format: { success: true, message: "...", data: { followers: { data: [{ follower: {...} }] } } }
-  const responseData = res?.data ?? {}
-  
+  const responseData = res?.data ?? res ?? {}
+
   // Handle paginated response: data.followers.data[].follower
-  const followersPayload = responseData.followers ?? {}
+  const followersPayload = responseData.followers ?? responseData.data?.followers ?? {}
   const followersList = Array.isArray(followersPayload.data) ? followersPayload.data : []
-  
+
   return followersList.map((item) => {
     if (!item || typeof item !== 'object') return null
-    const follower = item.follower ?? {}
+    const follower = item.follower ?? item ?? {}
     return {
       id: follower.id,
       name: follower.fname && follower.lname ? `${follower.fname} ${follower.lname}` : follower.fname || follower.lname || 'Kullanıcı',
@@ -271,15 +271,15 @@ export async function getFollowers(userId) {
 export async function getFollowing(userId) {
   const res = await api.get(`/following/${userId}`)
   // Response format: { success: true, message: "...", data: { following: { data: [{ following: {...} }] } } }
-  const responseData = res?.data ?? {}
-  
+  const responseData = res?.data ?? res ?? {}
+
   // Handle paginated response: data.following.data[].following
-  const followingPayload = responseData.following ?? {}
+  const followingPayload = responseData.following ?? responseData.data?.following ?? {}
   const followingList = Array.isArray(followingPayload.data) ? followingPayload.data : []
-  
+
   return followingList.map((item) => {
     if (!item || typeof item !== 'object') return null
-    const following = item.following ?? {}
+    const following = item.following ?? item ?? {}
     return {
       id: following.id,
       name: following.fname && following.lname ? `${following.fname} ${following.lname}` : following.fname || following.lname || 'Kullanıcı',
@@ -289,4 +289,12 @@ export async function getFollowing(userId) {
       subtitle: following.username ? `@${following.username}` : null,
     }
   }).filter(Boolean)
+}
+
+export async function updatePassword(password, passwordConfirmation) {
+  const res = await api.post('/profile', {
+    password,
+    password_confirmation: passwordConfirmation,
+  })
+  return res?.data ?? res
 }

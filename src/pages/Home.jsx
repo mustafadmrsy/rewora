@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Sparkles, RotateCw } from 'lucide-react'
+import { Sparkles, RotateCw, ListTodo } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Card from '../components/Card'
 import { Button, GoldBadge, ProgressBar, Skeleton } from '../components/ui'
@@ -217,15 +217,36 @@ export default function Home() {
             <div className="hidden lg:block">
               <ActiveTaskCard task={activeTask} onContinue={() => navigate(`/gorevler/${activeTask.id}`)} />
             </div>
-          ) : null}
+          ) : (
+            <Card className="overflow-hidden hidden lg:block">
+              <div className="p-6">
+                <div className="flex flex-col items-center justify-center gap-3 text-center">
+                  <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/6 text-white/40">
+                    <ListTodo size={28} />
+                  </div>
+                  <div className="text-sm font-semibold text-white/80">Devam eden göreviniz bulunmamaktadır</div>
+                  <div className="text-xs text-white/55">Yeni görevler için görevler sayfasını ziyaret edin</div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    type="button"
+                    onClick={() => navigate('/gorevler')}
+                    className="mt-2"
+                  >
+                    Görevlere Git
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
           {loading ? (
-            <div className="mx-auto w-full max-w-[560px] space-y-5">
+            <div className="w-full space-y-5">
               {Array.from({ length: 4 }).map((_, i) => (
                 <Skeleton key={i} className="h-[520px]" />
               ))}
             </div>
           ) : (
-            <div className="mx-auto w-full max-w-[560px] space-y-5">
+            <div className="w-full space-y-5">
               {filteredPosts.map((p) => (
                 <FeedCard
                   key={p.id}

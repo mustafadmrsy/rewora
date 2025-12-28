@@ -12,6 +12,8 @@ import RewardDetail from './pages/RewardDetail'
 import Notifications from './pages/Notifications'
 import Messages from './pages/Messages'
 import Profile from './pages/Profile'
+import Security from './pages/Security'
+import BlockedUsers from './pages/BlockedUsers'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Privacy from './pages/Privacy'
@@ -38,6 +40,8 @@ function App() {
             <Route path="mesajlar" element={<Messages />} />
             <Route path="profil" element={<Profile />} />
             <Route path="profil/:id" element={<Profile />} />
+            <Route path="guvenlik" element={<Security />} />
+            <Route path="engellenen-kullanicilar" element={<BlockedUsers />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Route>

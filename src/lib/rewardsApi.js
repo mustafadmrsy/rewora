@@ -137,28 +137,13 @@ export async function listOffers(pageOrUrl = null) {
       : pageOrUrl ? `/offer?page=${pageOrUrl}` : '/offer'
 
     const res = await api.get(url)
-
-    console.log('listOffers raw response:', res) // DEBUG
-
-    // Backend response format:
-    // { success: true, message: "...", data: { data: [...], next_page_url: "...", current_page: 1 } }
-    // api.get() returns the full response object
-
-    // Extract the pagination wrapper
     const paginationWrapper = res?.data ?? res
 
-    console.log('paginationWrapper:', paginationWrapper) // DEBUG
-
-    // paginationWrapper.data is the actual array of offers (Laravel pagination)
     const offersList = Array.isArray(paginationWrapper?.data)
       ? paginationWrapper.data
       : toArray(paginationWrapper)
 
-    console.log('offersList before mapping:', offersList) // DEBUG
-
     const offers = offersList.map(mapOffer).filter(Boolean)
-
-    console.log('offers after mapping:', offers) // DEBUG
 
     return {
       offers,
@@ -185,8 +170,6 @@ export async function listUserOffers(page = 1) {
   try {
     const res = await api.get(`/offer/user?page=${page}`)
 
-    console.log('listUserOffers raw response:', res) // DEBUG
-
     // Backend response format:
     // { success: true, message: "...", data: { data: [...], current_page: 1, next_page_url: "..." } }
     // api.get() returns the full response object
@@ -194,18 +177,12 @@ export async function listUserOffers(page = 1) {
     // Extract the pagination wrapper
     const paginationWrapper = res?.data ?? res
 
-    console.log('paginationWrapper:', paginationWrapper) // DEBUG
-
     // paginationWrapper.data is the actual array of user offers (Laravel pagination)
     const userOffersList = Array.isArray(paginationWrapper?.data)
       ? paginationWrapper.data
       : toArray(paginationWrapper)
 
-    console.log('userOffersList before mapping:', userOffersList) // DEBUG
-
     const userOffers = userOffersList.map(mapUserOffer).filter(Boolean)
-
-    console.log('userOffers after mapping:', userOffers) // DEBUG
 
     return {
       userOffers,

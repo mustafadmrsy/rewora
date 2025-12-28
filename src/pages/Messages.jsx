@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import { Search, Send, MoreVertical, ChevronLeft } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui'
 import { listConversations, listMessages, sendMessage, mapMessage } from '../lib/messagesApi'
 import { getUser } from '../lib/authStorage'
 import { connectToConversation, disconnect } from '../lib/echoService'
 
 export default function Messages() {
+    const navigate = useNavigate()
     const [search, setSearch] = useState('')
     const [showSearch, setShowSearch] = useState(false)
     const [selected, setSelected] = useState(null)
@@ -137,8 +139,6 @@ export default function Messages() {
 
     useEffect(() => {
         if (!selected || !currentUserId) return
-
-        console.log('[Messages] WS connect:', selected)
         setOnlineUsers(new Set())
 
         connectToConversation(selected)
@@ -307,7 +307,17 @@ export default function Messages() {
                                                 }`}
                                         >
                                             <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                <div className="relative h-11 w-11 rounded-full border border-white/10 bg-white/10 overflow-hidden shrink-0">
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.preventDefault()
+                                                        e.stopPropagation()
+                                                        if (c.other_user?.id) {
+                                                            navigate(`/profil/${c.other_user.id}`)
+                                                        }
+                                                    }}
+                                                    className="relative h-11 w-11 rounded-full border border-white/10 bg-white/10 overflow-hidden shrink-0 cursor-pointer hover:border-white/20 transition"
+                                                >
                                                     {c.other_user?.photo_url ? (
                                                         <img
                                                             src={c.other_user.photo_url}
@@ -322,7 +332,7 @@ export default function Messages() {
                                                     {c.other_user?.id && onlineUsers.has(c.other_user.id) && (
                                                         <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-400 border-2 border-[#0f0f0f]" />
                                                     )}
-                                                </div>
+                                                </button>
                                                 <div className="min-w-0 flex-1">
                                                     <div className="flex items-center justify-between gap-2 mb-1">
                                                         <div className="truncate text-sm font-semibold text-white">
@@ -367,7 +377,15 @@ export default function Messages() {
                                                     <ChevronLeft size={18} />
                                                 </button>
                                             )}
-                                            <div className="relative h-10 w-10 rounded-full border border-white/10 bg-white/10 overflow-hidden shrink-0">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (selectedChat.other_user?.id) {
+                                                        navigate(`/profil/${selectedChat.other_user.id}`)
+                                                    }
+                                                }}
+                                                className="relative h-10 w-10 rounded-full border border-white/10 bg-white/10 overflow-hidden shrink-0 cursor-pointer hover:border-white/20 transition"
+                                            >
                                                 {selectedChat.other_user?.photo_url ? (
                                                     <img
                                                         src={selectedChat.other_user.photo_url}
@@ -382,7 +400,7 @@ export default function Messages() {
                                                 {selectedChat.other_user?.id && onlineUsers.has(selectedChat.other_user.id) && (
                                                     <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-400 border-2 border-[#0f0f0f]" />
                                                 )}
-                                            </div>
+                                            </button>
                                             <div>
                                                 <div className="text-sm font-semibold text-white">
                                                     {selectedChat.other_user?.name ?? 'Kullanıcı'}

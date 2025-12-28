@@ -42,8 +42,6 @@ export function mapMission(raw) {
     category_slug: category?.slug ?? '',
     created_at: raw.created_at ?? null,
   }
-
-  console.log('mapMission:', { raw, mapped })
   return mapped
 }
 
@@ -69,7 +67,6 @@ export function mapUserMission(raw) {
     updated_at: raw.updated_at ?? null,
   }
 
-  console.log('mapUserMission:', { raw, mapped })
   return mapped
 }
 
