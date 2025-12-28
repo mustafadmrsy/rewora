@@ -40,20 +40,6 @@ const ProgressBar = ({ value }) => (
     </div>
 )
 
-const formatRelativeDate = (dateString) => {
-    if (!dateString) return ''
-    const date = new Date(dateString)
-    const now = new Date()
-    const diff = now - date
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-    if (days === 0) return 'Bugün'
-    if (days === 1) return 'Dün'
-    if (days < 7) return `${days}g`
-    if (days < 30) return `${Math.floor(days / 7)}h`
-    if (days < 365) return `${Math.floor(days / 30)}a`
-    return `${Math.floor(days / 365)}y`
-}
-
 // Components
 function MiniActiveTaskRow({ task, onContinue }) {
     return (

@@ -126,6 +126,7 @@ export function mapPost(raw) {
   return {
     ...raw,
     id,
+    user_id: raw.user_id ?? user?.id ?? null,
     handle,
     subtitle,
     category,
@@ -157,7 +158,14 @@ export async function listPosts() {
         : toArray(postsPayload)
 
   const posts = postsRaw.map(mapPost).filter(Boolean)
-  return { posts, categories: data.categories ?? [], user: data.user ?? null, meta: postsPayload ?? null }
+  return { 
+    posts, 
+    categories: data.categories ?? [], 
+    user: data.user ?? null, 
+    meta: postsPayload ?? null,
+    continue_mission: data.continiue_mission ?? data.continue_mission ?? null, // Backend'de typo var: continiue_mission
+    last_three_offers: data.last_three_offers ?? []
+  }
 }
 
 export async function getPost(postId) {

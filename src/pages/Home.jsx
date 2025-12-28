@@ -6,7 +6,8 @@ import { Button, GoldBadge, ProgressBar, Skeleton } from '../components/ui'
 import FeedCard from './home/components/FeedCard'
 import RightColumn from './home/components/RightColumn'
 import { listPosts, toggleLike } from '../lib/postsApi'
-import { listUserMissions } from '../lib/missionsApi'
+import { mapUserMission } from '../lib/missionHelpers'
+import { mapOffer } from '../lib/rewardsApi'
 import { updateUser } from '../lib/authStorage'
 
 function ActiveTaskCard({ task, onContinue }) {
@@ -54,7 +55,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [posts, setPosts] = useState([])
   const [activeTask, setActiveTask] = useState(null)
-  const [loadingTask, setLoadingTask] = useState(true)
+  const [miniRewards, setMiniRewards] = useState([])
 
   useEffect(() => {
     let cancelled = false
@@ -85,9 +86,50 @@ export default function Home() {
         if (res.user) {
           updateUser(res.user)
         }
+
+        // Continue mission - PostService'den gelen continue_mission
+        const continueMission = res.continue_mission
+        if (continueMission) {
+          const mappedMission = mapUserMission(continueMission)
+          if (mappedMission && mappedMission.mission) {
+            const mission = mappedMission.mission
+            let progress = 50
+            const status = String(mappedMission.status ?? '').toLowerCase()
+            if (status === 'processing') progress = 33
+            if (status === 'pending') progress = 66
+
+            setActiveTask({
+              id: mission.id ?? mappedMission.mission_id,
+              title: mission.title ?? '',
+              reward: mission.coin ?? 0,
+              progress: progress,
+              description: mission.description ?? '',
+            })
+          } else {
+            setActiveTask(null)
+          }
+        } else {
+          setActiveTask(null)
+        }
+
+        // Last three offers - PostService'den gelen last_three_offers
+        const lastThreeOffers = res.last_three_offers ?? []
+        const mappedMiniRewards = lastThreeOffers.map((offer) => {
+          const mapped = mapOffer(offer)
+          return {
+            id: mapped?.id ?? offer?.id,
+            title: mapped?.title ?? offer?.title ?? '',
+            price: mapped?.coin ?? mapped?.price ?? offer?.coin ?? offer?.price ?? 0,
+            vendor: mapped?.vendor ?? offer?.company?.name ?? '',
+            image_url: mapped?.image_url ?? mapped?.company_image_url ?? offer?.image_url ?? null,
+          }
+        }).filter(Boolean)
+        setMiniRewards(mappedMiniRewards)
       } catch {
         if (cancelled) return
         setPosts([])
+        setActiveTask(null)
+        setMiniRewards([])
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -118,49 +160,6 @@ export default function Home() {
     })
   }, [posts])
 
-  // Load active task
-  useEffect(() => {
-    let cancelled = false
-
-    async function loadTask() {
-      setLoadingTask(true)
-      try {
-        const res = await listUserMissions()
-        if (cancelled) return
-        
-        // Find active task (status: 'pending' means active/in progress)
-        const activeUserMission = res.userMissions?.find(
-          (um) => String(um?.status ?? '') === 'pending'
-        )
-        
-        if (activeUserMission && activeUserMission.mission) {
-          const mission = activeUserMission.mission
-          // Use default progress of 50% if not available (similar to Tasks.jsx)
-          const progress = activeUserMission.progress ?? activeUserMission.percentage ?? 50
-          
-          setActiveTask({
-            id: activeUserMission.mission_id ?? mission.id,
-            title: mission.title ?? '',
-            reward: mission.coin ?? 0,
-            progress: progress,
-            description: mission.description ?? '',
-          })
-        } else {
-          setActiveTask(null)
-        }
-      } catch {
-        if (cancelled) return
-        setActiveTask(null)
-      } finally {
-        if (!cancelled) setLoadingTask(false)
-      }
-    }
-
-    loadTask()
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   const filteredPosts = useMemo(() => {
     return posts.filter((p) => {
@@ -172,25 +171,8 @@ export default function Home() {
     })
   }, [posts, cat, q])
 
-  const miniRewards = useMemo(
-    () => [
-      { id: 1, title: 'Vera Makarna', price: 3500 },
-      { id: 2, title: 'Halley Coffee', price: 3500 },
-      { id: 3, title: 'Sinema Bileti', price: 6000 },
-    ],
-    [],
-  )
-
-  const activeTasks = useMemo(
-    () => {
-      if (!activeTask) return []
-      return [activeTask]
-    },
-    [activeTask],
-  )
 
   const [showMiniModal, setShowMiniModal] = useState(false)
-  const [showTasksModal, setShowTasksModal] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
   function Modal({ title, onClose, children }) {
@@ -225,7 +207,7 @@ export default function Home() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          {loadingTask ? (
+          {loading ? (
             <Card className="overflow-hidden hidden lg:block">
               <div className="p-6">
                 <Skeleton className="h-24 w-full" />
@@ -233,7 +215,7 @@ export default function Home() {
             </Card>
           ) : activeTask ? (
             <div className="hidden lg:block">
-              <ActiveTaskCard task={activeTask} onContinue={() => navigate('/gorevler')} />
+              <ActiveTaskCard task={activeTask} onContinue={() => navigate(`/gorevler/${activeTask.id}`)} />
             </div>
           ) : null}
           {loading ? (
@@ -289,10 +271,9 @@ export default function Home() {
 
         <RightColumn
           miniRewards={miniRewards}
-          activeTasks={activeTasks}
-          onInspectReward={() => navigate('/oduller')}
+          loadingRewards={loading}
+          onInspectReward={(reward) => navigate(`/oduller/${reward.id}`)}
           onGoRewards={() => navigate('/oduller')}
-          onContinueTask={() => navigate('/gorevler')}
         />
       </div>
 
@@ -329,36 +310,6 @@ export default function Home() {
         </Modal>
       ) : null}
 
-      {showTasksModal ? (
-        <Modal title="Devam Eden Görevler" onClose={() => setShowTasksModal(false)}>
-          <div className="space-y-3">
-            {activeTasks.map((t, i) => (
-              <div
-                key={`${t.title}-${i}`}
-                className="flex items-center justify-between rounded-[14px] border border-white/10 bg-white/4 px-4 py-3"
-              >
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-white">{t.title}</div>
-                  <div className="text-xs text-white/55">İlerleme: {t.progress}%</div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <GoldBadge className="px-2 py-1">
-                    <span className="text-xs font-semibold">{t.reward}</span>
-                    <span className="text-xs font-semibold">altın</span>
-                  </GoldBadge>
-                  <button
-                    type="button"
-                    className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-semibold text-white hover:bg-emerald-400 transition"
-                    onClick={() => navigate(t.id ? `/gorevler/${t.id}` : '/gorevler')}
-                  >
-                    Git
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Modal>
-      ) : null}
 
     </div>
   )

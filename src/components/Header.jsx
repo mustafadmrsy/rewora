@@ -173,12 +173,14 @@ export default function Header({ title = 'Rewora' }) {
               </div>
             </div>
           ) : onMessages ? (
-            // Mesajlar sayfası - mobilde thread açık değilse "Mesajlar" yazısı göster
-            isMobile && !messagesThreadOpen ? (
-              <div className="text-lg font-semibold leading-none tracking-tight text-white">
-                Mesajlar
+            // Mesajlar sayfası - tam ortada göster
+            <div className="flex min-w-0 flex-1 items-center relative">
+              <div className="flex-1 text-center absolute left-0 right-0 pointer-events-none">
+                <div className="text-lg font-semibold leading-none tracking-tight text-white">
+                  Mesajlar
+                </div>
               </div>
-            ) : null
+            </div>
           ) : onProfile ? (
             <div className="flex min-w-0 flex-1 items-center relative">
               <div className="flex-1 text-center absolute left-0 right-0 pointer-events-none">

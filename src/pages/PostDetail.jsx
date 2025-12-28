@@ -177,7 +177,7 @@ export default function PostDetail() {
           >
             <ChevronLeft size={20} />
           </button>
-          
+
           <div className="flex items-center gap-2">
             {post?.gold ? (
               <GoldBadge className="justify-center">
@@ -266,10 +266,7 @@ export default function PostDetail() {
               <div className="flex items-center justify-between px-5 py-3">
                 <div className="flex items-center gap-3">
                   <button
-                    className={cn(
-                      'inline-flex items-center gap-2 text-sm text-white/70 transition hover:text-white',
-                      liked ? 'text-[color:var(--gold)]' : '',
-                    )}
+                    className="inline-flex items-center gap-2 text-sm text-white/70 transition hover:text-white"
                     onClick={async () => {
                       const prevLiked = liked
                       setLiked((v) => !v)
@@ -284,7 +281,11 @@ export default function PostDetail() {
                     }}
                     type="button"
                   >
-                    <Heart size={18} className={liked ? 'text-[color:var(--gold)]' : 'text-white/70'} />
+                    <Heart
+                      size={18}
+                      className={liked ? 'text-red-500' : 'text-white/70'}
+                      fill={liked ? 'currentColor' : 'none'}
+                    />
                     <span>{likes}</span>
                   </button>
 
@@ -372,7 +373,7 @@ export default function PostDetail() {
                 }}
               >
                 <Trash2 size={16} className="text-red-200" />
-                Sil
+                Gönderiyi Sil
               </button>
             ) : (
               <>

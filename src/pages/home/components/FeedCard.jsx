@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { CheckCircle, Flag, Heart, MessageCircle, MoreVertical, Send, UserX } from 'lucide-react'
+import { CheckCircle, Flag, Heart, MessageCircle, MoreVertical, Send, UserX, Trash2 } from 'lucide-react'
 import Card from '../../../components/Card'
-import { addReview, listReviews, resolvePostImageUrl, formatRelativeDate } from '../../../lib/postsApi'
+import { addReview, listReviews, resolvePostImageUrl, formatRelativeDate, deletePost, reportPost } from '../../../lib/postsApi'
+import { getUser } from '../../../lib/authStorage'
+import { useNavigate } from 'react-router-dom'
 
 function CommentAvatar({ url }) {
   const [error, setError] = useState(false)
@@ -25,6 +27,18 @@ function CommentAvatar({ url }) {
 }
 
 export default function FeedCard({ post, liked, likes, onLike, onOpen }) {
+  const navigate = useNavigate()
+  const currentUser = getUser()
+  // PostDetail'deki gibi kontrol: post.user_id == getUser().id (rewora_user'dan)
+  const isOwnPost = useMemo(() => {
+    if (!currentUser?.id || !post) return false
+    // Önce post.user_id'yi kontrol et, yoksa post.user.id'yi dene
+    const postUserId = post.user_id ?? post.user?.id ?? null
+    if (!postUserId) return false
+    // String karşılaştırması yap (tip uyumsuzluğu için)
+    return String(currentUser.id) === String(postUserId)
+  }, [currentUser?.id, post?.user_id, post?.user?.id])
+
   const [openComments, setOpenComments] = useState(false)
   const [imageError, setImageError] = useState(false)
   const [avatarError, setAvatarError] = useState(false)
@@ -302,28 +316,51 @@ export default function FeedCard({ post, liked, likes, onLike, onOpen }) {
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <button
-                      type="button"
-                      className="w-full px-4 py-3 text-left text-sm font-semibold text-red-200 hover:bg-red-500/10 transition flex items-center gap-3"
-                      onClick={() => {
-                        setMenuOpen(false)
-                        showToast('Başarılı', 'Kullanıcı engellendi.')
-                      }}
-                    >
-                      <UserX size={16} className="text-red-200" />
-                      Kullanıcıyı engelle
-                    </button>
-                    <button
-                      type="button"
-                      className="w-full px-4 py-3 text-left text-sm font-semibold text-red-200 hover:bg-red-500/10 transition flex items-center gap-3"
-                      onClick={() => {
-                        setMenuOpen(false)
-                        setReportOpen(true)
-                      }}
-                    >
-                      <Flag size={16} className="text-red-200" />
-                      Gönderiyi şikayet et
-                    </button>
+                    {isOwnPost ? (
+                      <button
+                        type="button"
+                        className="w-full px-4 py-3 text-left text-sm font-semibold text-red-200 hover:bg-red-500/10 transition flex items-center gap-3"
+                        onClick={async () => {
+                          setMenuOpen(false)
+                          try {
+                            await deletePost(post.id)
+                            showToast('Başarılı', 'Gönderi silindi.')
+                            // Sayfayı yenile veya postu listeden kaldır
+                            window.location.reload()
+                          } catch {
+                            showToast('Hata', 'Gönderi silinemedi.')
+                          }
+                        }}
+                      >
+                        <Trash2 size={16} className="text-red-200" />
+                        Gönderiyi Sil
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="w-full px-4 py-3 text-left text-sm font-semibold text-red-200 hover:bg-red-500/10 transition flex items-center gap-3"
+                          onClick={() => {
+                            setMenuOpen(false)
+                            showToast('Başarılı', 'Kullanıcı engellendi.')
+                          }}
+                        >
+                          <UserX size={16} className="text-red-200" />
+                          Kullanıcıyı engelle
+                        </button>
+                        <button
+                          type="button"
+                          className="w-full px-4 py-3 text-left text-sm font-semibold text-red-200 hover:bg-red-500/10 transition flex items-center gap-3"
+                          onClick={() => {
+                            setMenuOpen(false)
+                            setReportOpen(true)
+                          }}
+                        >
+                          <Flag size={16} className="text-red-200" />
+                          Gönderiyi şikayet et
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               ) : null}
@@ -410,11 +447,16 @@ export default function FeedCard({ post, liked, likes, onLike, onOpen }) {
                           type="button"
                           className="flex-1 h-11 rounded-full border border-red-500/25 bg-red-500/10 text-sm font-semibold text-red-200 hover:bg-red-500/15 transition cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
                           disabled={!reportReason || !reportDetails.trim()}
-                          onClick={() => {
-                            setReportOpen(false)
-                            setReportReason('')
-                            setReportDetails('')
-                            showToast('Başarılı', 'Şikayetiniz başarıyla gönderildi.')
+                          onClick={async () => {
+                            try {
+                              await reportPost({ postId: post.id, reason: reportReason, content: reportDetails })
+                              setReportOpen(false)
+                              setReportReason('')
+                              setReportDetails('')
+                              showToast('Başarılı', 'Şikayetiniz başarıyla gönderildi.')
+                            } catch {
+                              showToast('Hata', 'Şikayet gönderilemedi.')
+                            }
                           }}
                         >
                           Gönder
