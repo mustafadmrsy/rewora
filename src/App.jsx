@@ -14,6 +14,8 @@ import Messages from './pages/Messages'
 import Profile from './pages/Profile'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import Privacy from './pages/Privacy'
+import Children from './pages/Children'
 
 function App() {
   return (
@@ -21,6 +23,8 @@ function App() {
       <Routes>
         <Route path="giris" element={<Login />} />
         <Route path="kayit" element={<Register />} />
+        <Route path="gizlilik-politikasi" element={<Privacy />} />
+        <Route path="cocuk-guvenligi-standartlari-politikasi" element={<Children />} />
         <Route element={<ProtectedRoute />}>
           <Route element={<AppShell />}>
             <Route index element={<Home />} />

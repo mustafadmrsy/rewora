@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react'
 import Card from '../components/Card'
 import { Clock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { Button } from '../components/ui'
 import { listNotifications, markAllNotificationsRead } from '../lib/notificationsApi'
 
 export default function Notifications() {
@@ -51,7 +50,7 @@ export default function Notifications() {
     try {
       const nextPage = page + 1
       const res = await listNotifications(nextPage)
-      
+
       if (res.notifications && res.notifications.length > 0) {
         setItems((prev) => {
           const existingIds = new Set(prev.map(item => item.id))
@@ -64,7 +63,9 @@ export default function Notifications() {
         setHasMore(false)
       }
     } catch (err) {
-      console.error('Error loading more notifications:', err)
+      if (import.meta.env.DEV) {
+        console.error('Error loading more notifications:', err)
+      }
       setHasMore(false)
     } finally {
       setLoadingMore(false)
@@ -78,7 +79,7 @@ export default function Notifications() {
       const scrollTop = window.scrollY || document.documentElement.scrollTop
       const scrollHeight = document.documentElement.scrollHeight
       const clientHeight = window.innerHeight
-      
+
       if (scrollHeight - scrollTop - clientHeight < 300 && hasMore && !loadingMore) {
         loadMore()
       }

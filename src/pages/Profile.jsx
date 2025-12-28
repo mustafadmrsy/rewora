@@ -5,7 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { getProfile, toggleLike, resolvePostImageUrl, getFollowers, getFollowing } from '../lib/postsApi'
 import FeedCard from './home/components/FeedCard'
 import { getUser, clearSession } from '../lib/authStorage'
-import { resetEcho } from '../lib/echo'
+import { resetEcho } from '../lib/echoService'
 
 export default function Profile() {
   const { id } = useParams()
@@ -395,11 +395,11 @@ export default function Profile() {
           onClick={() => setMenuOpen(false)}
         >
           <div
-            className="mx-auto h-full w-full max-w-[520px] lg:max-w-[920px]"
+            className="mx-auto flex h-full w-full max-w-[520px] lg:max-w-[920px] flex-col"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="relative flex items-center justify-center px-4 py-3">
+            <div className="relative flex shrink-0 items-center justify-center px-4 py-3">
               <button
                 type="button"
                 className="absolute left-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/6 text-white/80 hover:bg-white/10 cursor-pointer"
@@ -411,7 +411,7 @@ export default function Profile() {
               <div className="text-lg font-semibold text-white">Menü</div>
             </div>
 
-            <div className="px-4 pb-6 pt-6 lg:pt-2">
+            <div className="flex-1 overflow-y-auto px-4 pb-6 pt-6 lg:pt-2 pb-[calc(96px+env(safe-area-inset-bottom))] lg:pb-6">
               <div className="space-y-3">
                 {isOwn ? (
                   <button

@@ -142,7 +142,9 @@ export async function listMessages(conversationId, page = 1, currentUserId = nul
 }
 
 export async function sendMessage(conversationId, message) {
-  const res = await api.post(`/conversation/${conversationId}/message`, {
+  const res = await api.post('/message', {
+    conversation_id: conversationId,
+    type: 'text',
     message: message.trim(),
   })
   const responseData = res?.data ?? {}

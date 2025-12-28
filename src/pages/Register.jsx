@@ -18,7 +18,7 @@ export default function Register() {
             aria-label="Rewora"
             onClick={() => navigate('/')}
           >
-            <img alt="Rewora" className="h-8 w-8 shrink-0" src="/logo/rewora_logo.png" />
+            <img alt="Rewora" className="h-8 w-8 shrink-0" src="/rewora_logo.png" />
             <span className="text-lg font-semibold leading-none tracking-tight text-white">ewora</span>
           </button>
           <div className="mt-2 text-sm text-white/55">Yeni hesap oluştur</div>

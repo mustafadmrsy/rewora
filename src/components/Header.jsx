@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Bell, Search, Home, ListTodo, Gift, Send, User, ChevronLeft, CheckCheck, Menu, X } from 'lucide-react'
 import { Chip, GoldBadge } from './ui'
 import { clearSession, getUser } from '../lib/authStorage'
-import { resetEcho } from '../lib/echo'
+import { resetEcho } from '../lib/echoService'
 
 export default function Header({ title = 'Rewora' }) {
   const navigate = useNavigate()
@@ -17,8 +17,11 @@ export default function Header({ title = 'Rewora' }) {
   const profileMenuRef = useRef(null)
   const [search, setSearch] = useState(qParam)
   const [categories, setCategories] = useState([])
+  const [messagesThreadOpen, setMessagesThreadOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const onHome = location.pathname === '/'
   const onTasks = location.pathname === '/gorevler'
+  const onTaskDetail = location.pathname.startsWith('/gorevler/') && location.pathname !== '/gorevler'
   const onRewards = location.pathname === '/oduller'
   const onRewardDetail = location.pathname.startsWith('/oduller/')
   const onMessages = location.pathname === '/mesajlar'
@@ -49,6 +52,26 @@ export default function Header({ title = 'Rewora' }) {
     return () => {
       window.removeEventListener('categoriesLoaded', handleCategoriesLoaded)
     }
+  }, [])
+
+  // Listen for Messages thread state
+  useEffect(() => {
+    function handleMessagesThreadState(event) {
+      setMessagesThreadOpen(event.detail?.showThread ?? false)
+    }
+
+    window.addEventListener('messagesThreadState', handleMessagesThreadState)
+    return () => {
+      window.removeEventListener('messagesThreadState', handleMessagesThreadState)
+    }
+  }, [])
+
+  // Detect mobile screen size
+  useEffect(() => {
+    const sync = () => setIsMobile(window.innerWidth < 1024)
+    sync()
+    window.addEventListener('resize', sync)
+    return () => window.removeEventListener('resize', sync)
   }, [])
 
   useEffect(() => {
@@ -106,7 +129,7 @@ export default function Header({ title = 'Rewora' }) {
                 aria-label="Rewora"
               >
                 <img
-                  src="/logo/rewora_logo.png"
+                  src="/rewora_logo.png"
                   alt="Rewora"
                   className="h-8 w-8 shrink-0"
                 />
@@ -131,15 +154,18 @@ export default function Header({ title = 'Rewora' }) {
                 </div>
               </div>
             </div>
-          ) : onRewardDetail ? (
-            <button
-              type="button"
-              onClick={() => navigate(-1)}
-              className="inline-flex items-center justify-center text-white/80 transition hover:text-white"
-              aria-label="Geri"
-            >
-              <ChevronLeft size={20} />
-            </button>
+          ) : onRewardDetail || onTaskDetail ? (
+            <>
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="inline-flex items-center justify-center text-white/80 transition hover:text-white"
+                aria-label="Geri"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <div className="flex-1" />
+            </>
           ) : (onTasks || onRewards) && fullName ? (
             <div className="min-w-0">
               <div className="text-lg font-semibold leading-none tracking-tight text-white">
@@ -147,14 +173,12 @@ export default function Header({ title = 'Rewora' }) {
               </div>
             </div>
           ) : onMessages ? (
-            <div className="flex min-w-0 flex-1 items-center relative">
-              <div className="flex-1 text-center absolute left-0 right-0 pointer-events-none">
-                <div className="text-lg font-semibold leading-none tracking-tight text-white">
-                  Mesajlar
-                </div>
+            // Mesajlar sayfası - mobilde thread açık değilse "Mesajlar" yazısı göster
+            isMobile && !messagesThreadOpen ? (
+              <div className="text-lg font-semibold leading-none tracking-tight text-white">
+                Mesajlar
               </div>
-            </div>
-
+            ) : null
           ) : onProfile ? (
             <div className="flex min-w-0 flex-1 items-center relative">
               <div className="flex-1 text-center absolute left-0 right-0 pointer-events-none">
@@ -258,58 +282,43 @@ export default function Header({ title = 'Rewora' }) {
                 </button>
               </div>
             )}
-            {onMessages && (
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  aria-label="Ara"
-                  onClick={() => {
-                    const event = new CustomEvent('messagesSearchToggle')
-                    window.dispatchEvent(event)
-                  }}
-                  className="inline-flex h-6 w-6 items-center justify-center text-white/80 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--gold)]/60 cursor-pointer"
-
-                >
-                  <Search size={18} />
-                </button>
-              </div>
-            )}
+            {/* Mesajlar sayfası kendi header'ını kullanıyor, burada arama butonu gösterme */}
           </>
         )}
       </div>
 
-      {onHome ? (
-        <div className="mx-auto max-w-[1480px] px-6 pb-4 lg:hidden">
-          <div className="relative">
-            <Search
-              size={18}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-white/45"
-            />
-            <input
-              placeholder="Arama"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') onSearchSubmit()
-              }}
-              className="h-11 w-full rounded-full border border-white/12 bg-white/6 pl-11 pr-4 text-sm text-white placeholder:text-white/35 outline-none transition focus:border-[color:var(--gold)]/40"
-            />
+        {onHome && !onMessages ? (
+          <div className="mx-auto max-w-[1480px] px-6 pb-4 lg:hidden">
+            <div className="relative">
+              <Search
+                size={18}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-white/45"
+              />
+              <input
+                placeholder="Arama"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') onSearchSubmit()
+                }}
+                className="h-11 w-full rounded-full border border-white/12 bg-white/6 pl-11 pr-4 text-sm text-white placeholder:text-white/35 outline-none transition focus:border-[color:var(--gold)]/40"
+              />
+            </div>
+            <div className="rewora-scroll mt-3 flex gap-2 overflow-x-auto pb-1">
+              {chips.map((c) => (
+                <Chip
+                  key={c.label}
+                  active={activeCat === c.slug}
+                  className="shrink-0"
+                  onClick={() => onChipClick(c)}
+                  type="button"
+                >
+                  {c.label}
+                </Chip>
+              ))}
+            </div>
           </div>
-          <div className="rewora-scroll mt-3 flex gap-2 overflow-x-auto pb-1">
-            {chips.map((c) => (
-              <Chip
-                key={c.label}
-                active={activeCat === c.slug}
-                className="shrink-0"
-                onClick={() => onChipClick(c)}
-                type="button"
-              >
-                {c.label}
-              </Chip>
-            ))}
-          </div>
-        </div>
-      ) : null}
+        ) : null}
 
     </header>
   )

@@ -68,6 +68,21 @@ export function mapOffer(raw) {
   const companyImage = raw.company?.image ?? null
   const companyImage_url = resolveUrl(companyImage)
 
+  // QR categories mapping - backend'den qr_categories olarak geliyor
+  const qrCategories = (raw.qr_categories ?? raw.qrCategories ?? []).map((cat) => ({
+    id: cat.id,
+    name: cat.name ?? '',
+    photo: resolveUrl(cat.photo),
+    products: (cat.products ?? []).map((prod) => ({
+      id: prod.id,
+      name: prod.name ?? '',
+      description: prod.description ?? '',
+      price: prod.price ?? 0,
+      old_price: prod.old_price ?? null,
+      photo: resolveUrl(prod.photo)
+    }))
+  }))
+
   return {
     ...raw,
     id,
@@ -82,6 +97,8 @@ export function mapOffer(raw) {
     company_image_url: companyImage_url,
     company: raw.company ?? null,
     description: raw.description ?? raw.desc ?? raw.content ?? '',
+    qrCategories,
+    qr_categories: qrCategories, // Backward compatibility
   }
 }
 
@@ -95,6 +112,9 @@ export function mapUserOffer(raw) {
     ...raw,
     id,
     offer,
+    code: raw.code ?? null,
+    used: raw.used === true || raw.used === 1,
+    products: raw.products ?? null,
     title: offer?.title ?? raw.title ?? '',
     vendor: offer?.vendor ?? raw.vendor ?? '',
     discount: offer?.discount ?? 0,
@@ -104,61 +124,107 @@ export function mapUserOffer(raw) {
     logo_url: offer?.logo_url ?? null,
     company: offer?.company ?? null,
     description: offer?.description ?? '',
+    qrCategories: offer?.qrCategories ?? [],
+    qr_categories: offer?.qr_categories ?? [],
   }
 }
 
-export async function listOffers() {
-  const res = await api.get('/offer')
-  // Response format: { success: 200, message: "...", data: { data: [...], ...pagination } } or { data: [...] }
-  const responseData = res?.data ?? {}
-  
-  // Handle paginated response: data can be { data: [...], current_page, ... } or direct array
-  const payload =
-    responseData?.offers ??
-    responseData?.data ??
-    responseData
+export async function listOffers(pageOrUrl = null) {
+  try {
+    // pageOrUrl can be a page number or next_page_url
+    const url = typeof pageOrUrl === 'string' && pageOrUrl.startsWith('http')
+      ? pageOrUrl.replace('https://rewora.com.tr/api', '')
+      : pageOrUrl ? `/offer?page=${pageOrUrl}` : '/offer'
 
-  const list =
-    Array.isArray(payload)
-      ? payload
-      : Array.isArray(payload?.data)
-        ? payload.data
-        : toArray(payload)
+    const res = await api.get(url)
 
-  const offers = list.map(mapOffer).filter(Boolean)
+    console.log('listOffers raw response:', res) // DEBUG
 
-  const user = responseData?.user ?? null
-  return { offers, user, meta: payload ?? null }
+    // Backend response format:
+    // { success: true, message: "...", data: { data: [...], next_page_url: "...", current_page: 1 } }
+    // api.get() returns the full response object
+
+    // Extract the pagination wrapper
+    const paginationWrapper = res?.data ?? res
+
+    console.log('paginationWrapper:', paginationWrapper) // DEBUG
+
+    // paginationWrapper.data is the actual array of offers (Laravel pagination)
+    const offersList = Array.isArray(paginationWrapper?.data)
+      ? paginationWrapper.data
+      : toArray(paginationWrapper)
+
+    console.log('offersList before mapping:', offersList) // DEBUG
+
+    const offers = offersList.map(mapOffer).filter(Boolean)
+
+    console.log('offers after mapping:', offers) // DEBUG
+
+    return {
+      offers,
+      nextPageUrl: paginationWrapper?.next_page_url ?? null,
+      currentPage: paginationWrapper?.current_page ?? 1,
+      lastPage: paginationWrapper?.last_page ?? 1,
+      total: paginationWrapper?.total ?? offers.length,
+      meta: paginationWrapper ?? null
+    }
+  } catch (error) {
+    console.error('listOffers error:', error)
+    return {
+      offers: [],
+      nextPageUrl: null,
+      currentPage: 1,
+      lastPage: 1,
+      total: 0,
+      meta: null
+    }
+  }
 }
 
-export async function listUserOffers() {
-  const res = await api.get('/offer/user')
-  // Response format: { success: 200, message: "...", data: { userOffers: { data: [...], ...pagination } } } or { data: { userOffers: [...] } }
-  const responseData = res?.data ?? {}
-  
-  // Handle paginated response: userOffers can be { data: [...], current_page, ... } or direct array
-  const userOffersPayload =
-    responseData?.userOffers ??
-    responseData?.user_offers ??
-    responseData?.data?.userOffers ??
-    responseData?.data?.user_offers ??
-    responseData?.data ??
-    responseData
+export async function listUserOffers(page = 1) {
+  try {
+    const res = await api.get(`/offer/user?page=${page}`)
 
-  const list =
-    Array.isArray(userOffersPayload)
-      ? userOffersPayload
-      : Array.isArray(userOffersPayload?.data)
-        ? userOffersPayload.data
-        : toArray(userOffersPayload)
+    console.log('listUserOffers raw response:', res) // DEBUG
 
-  const userOffers = list.map(mapUserOffer).filter(Boolean)
-  const user = responseData?.user ?? null
+    // Backend response format:
+    // { success: true, message: "...", data: { data: [...], current_page: 1, next_page_url: "..." } }
+    // api.get() returns the full response object
 
-  return { 
-    userOffers, 
-    user, 
-    meta: userOffersPayload ?? null 
+    // Extract the pagination wrapper
+    const paginationWrapper = res?.data ?? res
+
+    console.log('paginationWrapper:', paginationWrapper) // DEBUG
+
+    // paginationWrapper.data is the actual array of user offers (Laravel pagination)
+    const userOffersList = Array.isArray(paginationWrapper?.data)
+      ? paginationWrapper.data
+      : toArray(paginationWrapper)
+
+    console.log('userOffersList before mapping:', userOffersList) // DEBUG
+
+    const userOffers = userOffersList.map(mapUserOffer).filter(Boolean)
+
+    console.log('userOffers after mapping:', userOffers) // DEBUG
+
+    return {
+      userOffers,
+      currentPage: paginationWrapper?.current_page ?? page,
+      nextPageUrl: paginationWrapper?.next_page_url ?? null,
+      lastPage: paginationWrapper?.last_page ?? 1,
+      total: paginationWrapper?.total ?? userOffers.length,
+      meta: paginationWrapper ?? null
+    }
+  } catch (error) {
+    console.error('listUserOffers error:', error)
+    return {
+      userOffers: [],
+      currentPage: page,
+      nextPageUrl: null,
+      lastPage: 1,
+      total: 0,
+      meta: null
+    }
   }
 }
 

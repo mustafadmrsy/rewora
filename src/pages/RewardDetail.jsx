@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { MapPin, Ticket, Image as ImageIcon } from 'lucide-react'
+import React, { useEffect, useRef, useState } from 'react'
+import { MapPin, Ticket, Image as ImageIcon, ChevronLeft } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button, GoldBadge } from '../components/ui'
 import { listOffers, listUserOffers, redeemOffer } from '../lib/rewardsApi'
+import { getUser } from '../lib/authStorage'
 
 export default function RewardDetail() {
   const navigate = useNavigate()
@@ -14,8 +15,6 @@ export default function RewardDetail() {
   const [error, setError] = useState('')
   const [showMenu, setShowMenu] = useState(false)
   const menuRef = useRef(null)
-
-  const userGold = useMemo(() => Number(user?.coin ?? 0), [user])
 
   // Scroll to menu when it opens
   useEffect(() => {
@@ -76,6 +75,9 @@ export default function RewardDetail() {
     )
   }
 
+  const currentUser = getUser()
+  const userGold = currentUser?.coin ?? 0
+
   return (
     <div className="min-h-screen bg-[color:var(--bg-1)] text-white">
       <div className="mx-auto max-w-[960px] px-3 sm:px-4 pt-2.5 pb-9 space-y-2.5">
@@ -84,31 +86,31 @@ export default function RewardDetail() {
           <div className="relative flex items-center justify-center overflow-hidden rounded-2xl bg-white/6 border border-white/8 aspect-[3/2]">
             {/* Background Image */}
             {reward?.company_image_url ? (
-              <img 
-                src={reward.company_image_url} 
-                alt="" 
-                className="absolute inset-0 h-full w-full object-cover" 
-                loading="lazy" 
+              <img
+                src={reward.company_image_url}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover"
+                loading="lazy"
               />
             ) : reward?.image_url ? (
-              <img 
-                src={reward.image_url} 
-                alt="" 
-                className="absolute inset-0 h-full w-full object-cover" 
-                loading="lazy" 
+              <img
+                src={reward.image_url}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover"
+                loading="lazy"
               />
             ) : (
               <div className="absolute inset-0 h-full w-full bg-gradient-to-br from-white/10 via-white/4 to-white/10" />
             )}
-            
+
             {/* Center Logo Circle */}
             {reward?.logo_url && (
               <div className="relative z-10 flex items-center justify-center">
-                <img 
-                  src={reward.logo_url} 
-                  alt="" 
-                  className="h-20 w-20 rounded-full object-cover border-2 border-white/20 bg-white/10 backdrop-blur-sm" 
-                  loading="lazy" 
+                <img
+                  src={reward.logo_url}
+                  alt=""
+                  className="h-20 w-20 rounded-full object-cover border-2 border-white/20 bg-white/10 backdrop-blur-sm"
+                  loading="lazy"
                 />
               </div>
             )}
@@ -181,7 +183,7 @@ export default function RewardDetail() {
               {redeeming ? 'İşleniyor...' : 'Kuponu kullan'}
             </button>
             <div className="space-y-2.5">
-              <button 
+              <button
                 type="button"
                 onClick={() => setShowMenu(!showMenu)}
                 className="w-full h-11 rounded-full bg-[color:var(--gold)] text-black text-[13px] font-semibold transition hover:bg-[color:var(--gold-2)]"
@@ -196,27 +198,27 @@ export default function RewardDetail() {
                     <div key={category.id} className="space-y-3">
                       <div className="flex items-center gap-3">
                         {category.photo && (
-                          <img 
-                            src={category.photo} 
-                            alt={category.name} 
+                          <img
+                            src={category.photo}
+                            alt={category.name}
                             className="h-12 w-12 rounded-lg object-cover border border-white/10"
                             loading="lazy"
                           />
                         )}
                         <div className="text-base font-semibold text-white">{category.name}</div>
                       </div>
-                      
+
                       {category.products && category.products.length > 0 && (
                         <div className="space-y-2 pl-0 sm:pl-14">
                           {category.products.map((product) => (
-                            <div 
-                              key={product.id} 
+                            <div
+                              key={product.id}
                               className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/6 p-3"
                             >
                               {product.photo && (
-                                <img 
-                                  src={product.photo} 
-                                  alt={product.name} 
+                                <img
+                                  src={product.photo}
+                                  alt={product.name}
                                   className="h-16 w-16 rounded-lg object-cover border border-white/10 shrink-0"
                                   loading="lazy"
                                 />

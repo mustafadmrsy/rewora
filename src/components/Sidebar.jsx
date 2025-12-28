@@ -2,18 +2,18 @@ import React from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Home,
-  ListTodo,
-  Gift,
   Send,
   User,
   Bell,
+  Users,
+  Award,
 } from 'lucide-react'
 import { cn } from './ui'
 
 const nav = [
   { to: '/', label: 'Anasayfa', icon: Home },
-  { to: '/gorevler', label: 'Görevler', icon: ListTodo },
-  { to: '/oduller', label: 'Ödüller', icon: Gift },
+  { to: '/oduller', label: 'Ödüller', icon: Award },
+  { to: '/gorevler', label: 'Görevler', icon: Users },
   { to: '/mesajlar', label: 'Mesajlar', icon: Send },
   { to: '/profil', label: 'Profil', icon: User },
 ]
@@ -26,7 +26,7 @@ export default function Sidebar({ gold = 5800 }) {
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-[92px] border-r border-white/10 bg-black/20 backdrop-blur-xl hidden lg:block">
       <div className="flex h-full flex-col items-center gap-4 px-3 py-5">
-       
+
 
         <div className="mt-2 flex w-full flex-col gap-2">
           {nav.slice(0, 1).map((item) => {
